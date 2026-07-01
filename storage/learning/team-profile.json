@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-07-01T02:02:12.355Z",
+  "preferredLocatorStrategy": "locator:getByRole",
+  "preferredAssertionStyle": "assertion:expect(locator).toBeVisible",
+  "preferredPageObjectPattern": "page-object:action-plus-verification-methods",
+  "preferredAccessibilityRules": "accessibility:wcag-2.1-aa",
+  "preferredWaitingStrategy": "wait:auto-waiting-and-web-first-assertions",
+  "acceptedPatterns": [
+    {
+      "pattern": "locator:getByRole",
+      "count": 4,
+      "acceptanceRate": 100
+    },
+    {
+      "pattern": "page-object:action-plus-verification-methods",
+      "count": 3,
+      "acceptanceRate": 100
+    },
+    {
+      "pattern": "test:business-workflow-only",
+      "count": 3,
+      "acceptanceRate": 100
+    },
+    {
+      "pattern": "accessibility:wcag-2.1-aa",
+      "count": 3,
+      "acceptanceRate": 100
+    },
+    {
+      "pattern": "locator:getByLabel",
+      "count": 3,
+      "acceptanceRate": 100
+    },
+    {
+      "pattern": "locator:getByText",
+      "count": 3,
+      "acceptanceRate": 100
+    },
+    {
+      "pattern": "assertion:expect(locator).toBeVisible",
+      "count": 3,
+      "acceptanceRate": 100
+    }
+  ],
+  "rejectedPatterns": [],
+  "teamStandards": [
+    "locator:getByRole",
+    "page-object:action-plus-verification-methods",
+    "test:business-workflow-only",
+    "accessibility:wcag-2.1-aa",
+    "locator:getByLabel",
+    "locator:getByText",
+    "assertion:expect(locator).toBeVisible"
+  ],
+  "governanceExceptions": [],
+  "historicalOutcomes": {
+    "accepted": 2,
+    "rejected": 0,
+    "modified": 2,
+    "successfulExecutions": 1,
+    "failedExecutions": 0
+  }
+}

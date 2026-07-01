@@ -1,0 +1,165 @@
+{
+  "generatedAt": "2026-07-01T02:02:54.568Z",
+  "repositoryRoot": "/Users/pavankumarh/Documents/EndToEndPlayWrightAutomationTool",
+  "tests": [
+    {
+      "name": "login.a11y.spec.ts",
+      "filePath": "tests/accessibility/login.a11y.spec.ts",
+      "workflows": [
+        "Login accessibility"
+      ],
+      "tags": [
+        "@playwright",
+        "@axe-core"
+      ],
+      "hasAccessibilityCoverage": true
+    },
+    {
+      "name": "login.spec.ts",
+      "filePath": "tests/functional/login.spec.ts",
+      "workflows": [
+        "Login"
+      ],
+      "tags": [
+        "@playwright"
+      ],
+      "hasAccessibilityCoverage": false
+    }
+  ],
+  "workflows": [
+    {
+      "id": "abb590fcb8d9",
+      "name": "Login accessibility",
+      "intent": "Workflow Login accessibility",
+      "sourceFile": "tests/accessibility/login.a11y.spec.ts",
+      "actions": [],
+      "assertions": [],
+      "navigation": [],
+      "tags": [
+        "@playwright",
+        "@axe-core"
+      ],
+      "dataUsage": []
+    },
+    {
+      "id": "a51a8c4547bb",
+      "name": "Login",
+      "intent": "Workflow Login",
+      "sourceFile": "tests/functional/login.spec.ts",
+      "actions": [],
+      "assertions": [],
+      "navigation": [],
+      "tags": [
+        "@playwright"
+      ],
+      "dataUsage": []
+    }
+  ],
+  "pageObjects": [
+    {
+      "name": "LoginPage",
+      "filePath": "pages/LoginPage.ts",
+      "methods": [],
+      "locators": [
+        {
+          "id": "pages/LoginPage.ts:170:role",
+          "raw": "getByRole('button', { name: 'Sign in' })",
+          "strategy": "role",
+          "value": "button', { name: 'Sign in' }",
+          "filePath": "pages/LoginPage.ts",
+          "score": 100,
+          "warnings": []
+        },
+        {
+          "id": "pages/LoginPage.ts:241:label",
+          "raw": "getByLabel('Email')",
+          "strategy": "label",
+          "value": "Email",
+          "filePath": "pages/LoginPage.ts",
+          "score": 95,
+          "warnings": []
+        },
+        {
+          "id": "pages/LoginPage.ts:292:label",
+          "raw": "getByLabel('Password')",
+          "strategy": "label",
+          "value": "Password",
+          "filePath": "pages/LoginPage.ts",
+          "score": 95,
+          "warnings": []
+        },
+        {
+          "id": "pages/LoginPage.ts:544:text",
+          "raw": "getByText('Dashboard')",
+          "strategy": "text",
+          "value": "Dashboard",
+          "filePath": "pages/LoginPage.ts",
+          "score": 82,
+          "warnings": []
+        }
+      ]
+    }
+  ],
+  "locators": [
+    {
+      "id": "pages/LoginPage.ts:170:role",
+      "raw": "getByRole('button', { name: 'Sign in' })",
+      "strategy": "role",
+      "value": "button', { name: 'Sign in' }",
+      "filePath": "pages/LoginPage.ts",
+      "score": 100,
+      "warnings": []
+    },
+    {
+      "id": "pages/LoginPage.ts:241:label",
+      "raw": "getByLabel('Email')",
+      "strategy": "label",
+      "value": "Email",
+      "filePath": "pages/LoginPage.ts",
+      "score": 95,
+      "warnings": []
+    },
+    {
+      "id": "pages/LoginPage.ts:292:label",
+      "raw": "getByLabel('Password')",
+      "strategy": "label",
+      "value": "Password",
+      "filePath": "pages/LoginPage.ts",
+      "score": 95,
+      "warnings": []
+    },
+    {
+      "id": "pages/LoginPage.ts:544:text",
+      "raw": "getByText('Dashboard')",
+      "strategy": "text",
+      "value": "Dashboard",
+      "filePath": "pages/LoginPage.ts",
+      "score": 82,
+      "warnings": []
+    }
+  ],
+  "accessibility": [
+    {
+      "name": "login.a11y.spec.ts",
+      "filePath": "tests/accessibility/login.a11y.spec.ts",
+      "workflows": [
+        "Login accessibility"
+      ],
+      "tags": [
+        "@playwright",
+        "@axe-core"
+      ],
+      "hasAccessibilityCoverage": true
+    }
+  ],
+  "tokenStats": {
+    "repositorySizeBytes": 1189,
+    "indexedFiles": 3,
+    "retrievedFiles": 0,
+    "estimatedTokensBeforeRetrieval": 298,
+    "estimatedTokensAfterRetrieval": 11,
+    "tokenReductionPercent": 96.31,
+    "processingTimeMs": 2,
+    "aiUsageBreakdown": {}
+  }
+}

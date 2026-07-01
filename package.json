@@ -1,0 +1,32 @@
+{
+  "name": "enterprise-ai-playwright-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Enterprise AI-assisted Playwright automation platform with AST-first analysis, governance, confidence guardrails, and Ollama semantic reasoning.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @platform/api & npm run dev -w @platform/web",
+    "build": "npm run build -ws",
+    "typecheck": "npm run typecheck -ws",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write .",
+    "test:e2e": "playwright test",
+    "index": "npm run index -w @platform/api"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.45.0",
+    "@types/node": "^20.14.0",
+    "@typescript-eslint/eslint-plugin": "^7.13.0",
+    "@typescript-eslint/parser": "^7.13.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.2",
+    "typescript": "^5.5.2"
+  }
+}

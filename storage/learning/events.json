@@ -1,0 +1,79 @@
+[
+  {
+    "source": "user-suggestion",
+    "action": "accepted",
+    "recommendationType": "smoke-test",
+    "originalRecommendation": "Prefer getByRole",
+    "finalOutcome": "Smoke test only",
+    "executionResult": "successful",
+    "confidenceScore": 90,
+    "patterns": [
+      "locator:getByRole"
+    ],
+    "approved": true,
+    "id": "1782565001223-e87cdbf5dc00c8",
+    "createdAt": "2026-06-27T12:56:41.223Z"
+  },
+  {
+    "source": "user-suggestion",
+    "action": "modified",
+    "recommendationType": "new-test",
+    "originalRecommendation": "Generated from deterministic AST extraction, retrieval, governance validation, and confidence scoring.",
+    "finalOutcome": "User reviewed recommendation",
+    "executionResult": "unknown",
+    "confidenceScore": 95,
+    "patterns": [
+      "page-object:action-plus-verification-methods",
+      "test:business-workflow-only",
+      "accessibility:wcag-2.1-aa",
+      "locator:getByRole",
+      "locator:getByLabel",
+      "locator:getByText",
+      "assertion:expect(locator).toBeVisible"
+    ],
+    "approved": true,
+    "id": "1782812389720-ddb580f4e1adf8",
+    "createdAt": "2026-06-30T09:39:49.720Z"
+  },
+  {
+    "source": "user-suggestion",
+    "action": "accepted",
+    "recommendationType": "framework-change",
+    "originalRecommendation": "pages/LoginPage.ts, tests/functional/login.spec.ts, tests/accessibility/login.a11y.spec.ts",
+    "finalOutcome": "Approved generated framework assets were written to Git working tree and index was rebuilt.",
+    "executionResult": "unknown",
+    "patterns": [
+      "page-object:action-plus-verification-methods",
+      "locator:getByRole",
+      "locator:getByLabel",
+      "locator:getByText",
+      "assertion:expect(locator).toBeVisible",
+      "test:business-workflow-only",
+      "accessibility:wcag-2.1-aa"
+    ],
+    "approved": true,
+    "id": "1782812786605-a2ac9d2c6a94f",
+    "createdAt": "2026-06-30T09:46:26.605Z"
+  },
+  {
+    "source": "user-suggestion",
+    "action": "modified",
+    "recommendationType": "new-test",
+    "originalRecommendation": "Generated from deterministic AST extraction, retrieval, governance validation, and confidence scoring.",
+    "finalOutcome": "User reviewed recommendation",
+    "executionResult": "unknown",
+    "confidenceScore": 100,
+    "patterns": [
+      "page-object:action-plus-verification-methods",
+      "test:business-workflow-only",
+      "accessibility:wcag-2.1-aa",
+      "locator:getByRole",
+      "locator:getByLabel",
+      "locator:getByText",
+      "assertion:expect(locator).toBeVisible"
+    ],
+    "approved": true,
+    "id": "1782813123594-6dfaa84cf4bab8",
+    "createdAt": "2026-06-30T09:52:03.594Z"
+  }
+]
