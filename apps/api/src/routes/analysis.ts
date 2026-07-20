@@ -131,12 +131,21 @@ analysisRouter.post('/apply', async (req, res, next) => {
       files: Array<{ path: string; content: string; action: 'create' | 'update' }>;
       approved?: boolean;
     };
+    if (!Array.isArray(files)) return res.status(400).json({ applied: false, message: 'A list of proposed files is required.' });
     const governance = new GovernanceEngine().validateChange({ files });
     if (!governance.passed) return res.status(422).json({ applied: false, governance });
     if (!approved) return res.status(409).json({ applied: false, message: 'Human approval required for non-auto changes.' });
 
+    const repositoryPrefix = `${repositoryRoot}${path.sep}`;
     for (const file of files) {
-      const absolute = path.join(repositoryRoot, file.path);
+      const absolute = path.resolve(repositoryRoot, file.path);
+      if (!absolute.startsWith(repositoryPrefix)) {
+        return res.status(400).json({ applied: false, message: `Invalid repository path: ${file.path}` });
+      }
+    }
+
+    for (const file of files) {
+      const absolute = path.resolve(repositoryRoot, file.path);
       await fs.mkdir(path.dirname(absolute), { recursive: true });
       await fs.writeFile(absolute, file.content);
     }

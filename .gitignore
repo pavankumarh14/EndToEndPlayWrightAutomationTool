@@ -5,4 +5,5 @@ test-results
 playwright-report
 .env
 storage/uploads
+storage/codegen-sessions
 *.log

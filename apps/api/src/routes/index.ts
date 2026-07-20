@@ -5,6 +5,7 @@ import { governanceRouter } from './governance.js';
 import { executionRouter } from './execution.js';
 import { gitRouter } from './git.js';
 import { learningRouter } from './learning.js';
+import { recordingRouter } from './recording.js';
 
 export function registerRoutes(app: Express): void {
   app.get('/', (_req, res) =>
@@ -18,7 +19,8 @@ export function registerRoutes(app: Express): void {
         '/api/governance',
         '/api/execution',
         '/api/git',
-        '/api/learning'
+        '/api/learning',
+        '/api/recording'
       ]
     })
   );
@@ -29,4 +31,5 @@ export function registerRoutes(app: Express): void {
   app.use('/api/execution', executionRouter);
   app.use('/api/git', gitRouter);
   app.use('/api/learning', learningRouter);
+  app.use('/api/recording', recordingRouter);
 }

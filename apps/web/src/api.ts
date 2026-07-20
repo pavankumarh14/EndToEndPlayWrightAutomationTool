@@ -21,6 +21,77 @@ export async function uploadScript(source: string, fileName = 'upload.spec.ts'):
   return response;
 }
 
+export interface RecordingSession {
+  id: string;
+  url: string;
+  status: 'starting' | 'running' | 'stopped' | 'exited' | 'failed';
+  createdAt: string;
+  updatedAt: string;
+  exitCode?: number | null;
+  error?: string;
+  generatedSource: string;
+  editedSource: string;
+}
+
+export function startRecording(url: string): Promise<RecordingSession> {
+  return apiPost('/api/recording/sessions', { url });
+}
+
+export function getRecording(id: string): Promise<RecordingSession> {
+  return apiGet(`/api/recording/sessions/${id}`);
+}
+
+export function stopRecording(id: string): Promise<RecordingSession> {
+  return apiPost(`/api/recording/sessions/${id}/stop`);
+}
+
+export function saveRecording(id: string, source: string): Promise<RecordingSession> {
+  return apiPost(`/api/recording/sessions/${id}/save`, { source });
+}
+
+export interface PullRequestReadiness {
+  ready: boolean;
+  branch?: string;
+  baseBranch?: string;
+  remote?: string;
+  existingPullRequest?: { url: string; branch: string; isDraft: boolean };
+  blockers: string[];
+}
+
+export interface CreatedPullRequest {
+  url: string;
+  branch: string;
+  baseBranch: string;
+  commit: string;
+  updated: boolean;
+}
+
+export interface ClosedPullRequest {
+  url: string;
+  branch: string;
+  remoteBranchDeleted: boolean;
+}
+
+export function getPullRequestReadiness(): Promise<PullRequestReadiness> {
+  return apiGet('/api/git/pull-request-readiness');
+}
+
+export function createPullRequest(input: { files: string[]; title: string; body: string }): Promise<CreatedPullRequest> {
+  return apiPost('/api/git/pull-request', input);
+}
+
+export function closePullRequest(input: { url: string; branch: string; deleteRemoteBranch: boolean }): Promise<ClosedPullRequest> {
+  return apiPost('/api/git/pull-request/close', input);
+}
+
+export function setGitRemote(remote: string): Promise<PullRequestReadiness> {
+  return apiPost('/api/git/remote', { remote });
+}
+
+export function startGitHubLogin(): Promise<{ started: boolean; message: string }> {
+  return apiPost('/api/git/auth/login');
+}
+
 export interface AnalysisResponse {
   parsed: { workflows: Array<{ name: string; intent: string; actions: unknown[]; assertions: unknown[] }> };
   confidence: {
