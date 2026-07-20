@@ -195,9 +195,87 @@ h2 {
   align-items: start;
 }
 
+.intake-intro {
+  color: #4c5d73;
+  font-weight: 650;
+}
+
+.intake-options {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) 46px minmax(320px, 1.1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.option-divider {
+  display: grid;
+  place-items: center;
+  position: relative;
+  color: #617086;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.option-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: #cfd7e3;
+}
+
+.option-divider span {
+  z-index: 1;
+  padding: 7px 5px;
+  border: 1px solid #cfd7e3;
+  border-radius: 999px;
+  background: #f6f7f9;
+}
+
 .stack {
   display: grid;
   gap: 16px;
+}
+
+.getting-started-hero {
+  background: linear-gradient(135deg, #f0fdfa, #ffffff);
+  border-color: #9fd8c9;
+}
+
+.getting-started-hero p,
+.guide-step p {
+  color: #4c5d73;
+  line-height: 1.5;
+}
+
+.guide-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.guide-step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.guide-step button {
+  margin-top: auto;
+}
+
+.guide-number {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #ffffff;
+  font-weight: 800;
 }
 
 .panel {
@@ -219,6 +297,121 @@ h2 {
   gap: 12px;
 }
 
+.section-title {
+  margin-top: 22px;
+}
+
+.technical-details {
+  margin-top: 20px;
+  border-top: 1px solid #dbe3ed;
+  padding-top: 14px;
+}
+
+.technical-details summary {
+  cursor: pointer;
+  color: #4c5d73;
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 12px;
+}
+
+.setup-explanation,
+.setup-warning {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #cde2df;
+  border-radius: 6px;
+  background: #f0fdfa;
+  color: #284452;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.setup-warning {
+  border-color: #f1c27d;
+  background: #fff8eb;
+  color: #704311;
+}
+
+.setup-warning a {
+  color: inherit;
+  font-weight: 700;
+}
+
+.github-login {
+  order: -1;
+}
+
+.command-details {
+  margin-top: 14px;
+  color: #4c5d73;
+  font-size: 13px;
+}
+
+.command-details summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.command-details code {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 4px;
+  background: #eef2f7;
+  color: #1d2430;
+}
+
+.pull-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #dbe3ed;
+}
+
+.pull-request-actions div {
+  display: grid;
+  gap: 3px;
+  margin-right: auto;
+  color: #4c5d73;
+  font-size: 13px;
+}
+
+.pull-request-link {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #9fd8c9;
+  border-radius: 6px;
+  background: #f0fdfa;
+}
+
+.pull-request-link a {
+  color: #0f766e;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.pull-request-link a:hover {
+  text-decoration: underline;
+}
+
+.pull-request-link span {
+  color: #4c5d73;
+  font-size: 13px;
+}
+
+.danger {
+  border-color: #dc6262;
+  color: #a11b1b;
+}
+
 textarea {
   width: 100%;
   min-height: 520px;
@@ -229,6 +422,47 @@ textarea {
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.recording-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recording-controls input {
+  flex: 1 1 260px;
+  min-height: 36px;
+  border: 1px solid #cfd7e3;
+  border-radius: 6px;
+  padding: 0 10px;
+  font: inherit;
+}
+
+.recording-guide {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #cde2df;
+  border-radius: 6px;
+  background: #f0fdfa;
+  color: #284452;
+  font-size: 13px;
+}
+
+.recording-guide ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 5px;
+}
+
+.file-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #4c5d73;
+  font-size: 13px;
+  margin-bottom: 12px;
 }
 
 pre {
@@ -339,8 +573,26 @@ pre {
   }
 
   .topbar,
-  .workspace {
+  .workspace,
+  .intake-options {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .guide-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .option-divider {
+    min-height: 46px;
+  }
+
+  .option-divider::before {
+    top: 50%;
+    right: 0;
+    bottom: auto;
+    left: 0;
+    width: 100%;
+    height: 1px;
   }
 }

@@ -75,5 +75,45 @@
     "approved": true,
     "id": "1782813123594-6dfaa84cf4bab8",
     "createdAt": "2026-06-30T09:52:03.594Z"
+  },
+  {
+    "source": "user-suggestion",
+    "action": "accepted",
+    "recommendationType": "framework-change",
+    "originalRecommendation": "pages/LoginPage.ts, tests/functional/login.spec.ts, tests/accessibility/login.a11y.spec.ts",
+    "finalOutcome": "Approved generated framework assets were written to Git working tree and index was rebuilt.",
+    "executionResult": "unknown",
+    "patterns": [
+      "page-object:action-plus-verification-methods",
+      "locator:getByRole",
+      "locator:getByLabel",
+      "locator:getByText",
+      "assertion:expect(locator).toBeVisible",
+      "test:business-workflow-only",
+      "accessibility:wcag-2.1-aa"
+    ],
+    "approved": true,
+    "id": "1783935094332-314831b17cc8a8",
+    "createdAt": "2026-07-13T09:31:34.332Z"
+  },
+  {
+    "source": "user-suggestion",
+    "action": "accepted",
+    "recommendationType": "framework-change",
+    "originalRecommendation": "pages/LoginPage.ts, tests/functional/login.spec.ts, tests/accessibility/login.a11y.spec.ts",
+    "finalOutcome": "Approved generated framework assets were written to Git working tree and index was rebuilt.",
+    "executionResult": "unknown",
+    "patterns": [
+      "page-object:action-plus-verification-methods",
+      "locator:getByRole",
+      "locator:getByLabel",
+      "locator:getByText",
+      "assertion:expect(locator).toBeVisible",
+      "test:business-workflow-only",
+      "accessibility:wcag-2.1-aa"
+    ],
+    "approved": true,
+    "id": "1784527433497-a110d39ab9e168",
+    "createdAt": "2026-07-20T06:03:53.497Z"
   }
 ]

@@ -1,15 +1,21 @@
 import { WorkflowModel } from '../types/domain.js';
 
 export function generatePageObject(workflow: WorkflowModel, pageName = toPascal(workflow.name) + 'Page'): string {
-  const locatorLines = workflow.actions
-    .filter((action) => action.locator)
+  const locatedActions = workflow.actions.filter((action) => action.locator);
+  const locatorLines = locatedActions
     .map((action, index) => {
       const locator = action.locator!;
       return `  readonly ${action.kind}${index + 1} = this.page.${locator.raw};`;
     })
     .join('\n');
 
-  return `import { expect, type Locator, type Page } from '@playwright/test';
+  const navigationLines = workflow.navigation.map((url) => `    await this.page.goto(${JSON.stringify(url)});`);
+  const actionLines = locatedActions.map(
+    (action, index) =>
+      `    await this.${action.kind}${index + 1}.${action.kind}(${action.value ? JSON.stringify(action.value) : ''});`
+  );
+
+  return `import { expect, type Page } from '@playwright/test';
 
 export class ${pageName} {
   constructor(private readonly page: Page) {}
@@ -17,11 +23,11 @@ export class ${pageName} {
 ${locatorLines || '  // Add accessible locators here after approval.'}
 
   async performWorkflow(): Promise<void> {
-${workflow.actions.map((action, index) => `    await this.${action.kind}${index + 1}.${action.kind}(${action.value ? JSON.stringify(action.value) : ''});`).join('\n')}
+${[...navigationLines, ...actionLines].join('\n') || '    // No recorded actions were found.'}
   }
 
   async verifyWorkflow(): Promise<void> {
-${workflow.assertions.length ? workflow.assertions.map((assertion) => `    await expect(${assertion.target}).${assertion.kind}(${assertion.expected});`).join('\n') : '    await expect(this.page).toHaveURL(/.*/);'}
+${workflow.assertions.length ? workflow.assertions.map((assertion) => `    await expect(${toPageReference(assertion.target)}).${assertion.kind}(${assertion.expected});`).join('\n') : '    await expect(this.page).toHaveURL(/.*/);'}
   }
 }
 `;
@@ -62,4 +68,8 @@ function toPascal(value: string): string {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('');
   return pascal || 'Generated';
+}
+
+function toPageReference(target: string): string {
+  return target.replace(/^page\./, 'this.page.');
 }

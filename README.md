@@ -76,6 +76,7 @@ The sidebar organizes the workflow into these areas:
 | Area | Purpose |
 | --- | --- |
 | Upload Center | Paste or upload a Playwright Codegen script and start analysis |
+| Codegen Recording | Enter a URL in Upload Center to launch a local browser and Playwright Inspector, edit the recorded script, then save and upload it for analysis |
 | Framework Explorer | Review indexed tests, workflows, page objects, locators, and accessibility assets |
 | Index Dashboard | Inspect index generation time, indexed file counts, and repository scan output |
 | Governance Dashboard | Review naming, folder, locator, accessibility, duplicate, and architecture findings |
@@ -87,15 +88,28 @@ The sidebar organizes the workflow into these areas:
 | AI Insights | Inspect optional semantic review output when Ollama is enabled |
 | Learning Dashboard | View accepted/rejected patterns, team standards, and confidence trends |
 | Token Analytics | Compare estimated repository token cost before and after retrieval |
-| Git Review Console | Review working-tree status and generated diffs before committing |
+| Git & Pull Request | Check GitHub readiness, review local changes, and see the draft pull request created after approval |
 
 The top action bar exposes the primary actions:
 
 - `Analyze` sends the current upload to `/api/analysis/upload`.
 - `Run` starts Playwright execution through `/api/execution/run`.
-- `Approve` writes the latest approved proposal to the repository through `/api/analysis/apply`.
+- `Approve` writes the latest approved proposal to the repository, commits only its generated files on a new `automation/...` branch, pushes it, and creates a draft GitHub pull request.
 
-On first load, the Upload Center shows a sample Playwright login script and the processing model targets: 95% deterministic analysis, 5% optional AI reasoning, and no raw repository code sent to AI.
+To create pull requests, install and authenticate GitHub CLI on the machine running the API:
+
+```bash
+gh auth login
+```
+
+The Git & Pull Request tab lets users configure the GitHub repository URL, displays diagnostics, and starts GitHub CLI's secure browser sign-in. It deliberately does not accept or store GitHub keys; GitHub CLI stores credentials securely. The project must be on its default branch so the platform can create an isolated branch and avoid committing unrelated worktree files.
+
+On first load, the Upload Center shows a sample Playwright login script and two intake paths:
+
+1. Upload or paste an existing script and click `Analyze`.
+2. Enter a URL, click `Start recording`, complete the workflow in the native Playwright browser and Inspector windows, edit the recorded source in the console, and click `Save & Upload`.
+
+Codegen launches on the same desktop machine as the API. The generated script is staged under `storage/codegen-sessions` and is not written into the automation framework until the normal proposal approval step.
 
 ## Environment Variables
 
@@ -181,6 +195,10 @@ The API is registered under `/api`.
 | `POST` | `/api/execution/run` | Run Playwright and return a self-healing proposal on failure |
 | `GET` | `/api/git/status` | Return Git status and diff information |
 | `POST` | `/api/git/commit` | Commit approved working-tree changes |
+| `GET` | `/api/git/pull-request-readiness` | Check GitHub CLI, authentication, remote, and branch prerequisites |
+| `POST` | `/api/git/remote` | Add or update the GitHub `origin` remote from an approved repository URL |
+| `POST` | `/api/git/pull-request` | Create a draft PR from explicitly approved generated files |
+| `POST` | `/api/git/pull-request/close` | Close a draft PR, with an optional confirmed remote-branch deletion |
 | `GET` | `/api/learning/profile` | Return the current team automation profile |
 | `GET` | `/api/learning/dashboard` | Return learning dashboard metrics |
 | `GET` | `/api/learning/events` | Return eligible learning event history |

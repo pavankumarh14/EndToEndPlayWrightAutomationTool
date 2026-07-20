@@ -86,7 +86,12 @@ export class ExecutionService {
     options: PlaywrightRunOptions
   ): Promise<Omit<ExecutionResult, 'accessibilityWithFunctional' | 'attemptedDependencyInstall' | 'retried' | 'installActions'>> {
     try {
-      const args = ['playwright', 'test', ...(options.filter ? ['-g', options.filter] : [])];
+      const args = [
+        'playwright',
+        'test',
+        ...(options.runAccessibilityWithFunctional ? [] : ['tests/functional']),
+        ...(options.filter ? ['-g', options.filter] : [])
+      ];
       const { stdout, stderr } = await exec('npx', args, { cwd: this.cwd, env: this.playwrightEnv(options) });
       return { passed: true, logs: stdout || stderr, artifacts: artifactPaths() };
     } catch (error) {
@@ -95,10 +100,9 @@ export class ExecutionService {
     }
   }
 
-  private playwrightEnv(options: PlaywrightRunOptions): NodeJS.ProcessEnv {
+  private playwrightEnv(_options: PlaywrightRunOptions): NodeJS.ProcessEnv {
     return {
-      ...process.env,
-      RUN_ACCESSIBILITY_WITH_FUNCTIONAL: options.runAccessibilityWithFunctional ? 'true' : 'false'
+      ...process.env
     };
   }
 
