@@ -1,25 +1,15 @@
 # Self-Healing Sequence
 
-```mermaid
-sequenceDiagram
-  participant Studio
-  participant API
-  participant Playwright
-  participant Healer
-  participant Index
-  participant AI
-  participant User
+```text
+Studio
+  -> API: Run approved tests
+  -> Playwright: Execute the test suite
+  <- API: Receive logs and test artifacts
+  -> Local failure analysis: Evaluate the error with deterministic rules
+  -> Framework index: Find locator and reusable-asset candidates
+  -> Optional AI provider: Review a reduced failure summary when available
+  <- Studio: Show local or AI-assisted next-step guidance
 
-  Studio->>API: Run approved tests
-  API->>Playwright: Execute Playwright tests
-  Playwright-->>API: Return logs and artifacts
-  API->>Healer: Analyze failure with local rules
-  Healer->>Index: Find locator and asset candidates
-  opt AI review is available
-    Healer->>AI: Send reduced failure summary
-    AI-->>Healer: Return recommendation
-  end
-  Healer-->>API: Return local or AI-assisted guidance
-  API-->>Studio: Show suggested next step
-  User->>Studio: Review guidance before any change
+User
+  -> Studio: Review the guidance before making any change
 ```
