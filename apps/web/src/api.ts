@@ -16,9 +16,13 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function uploadScript(source: string, fileName = 'upload.spec.ts'): Promise<AnalysisResponse> {
-  const response = await apiPost<AnalysisResponse>('/api/analysis/upload', { source, fileName });
-  return response;
+export function uploadScript(
+  source: string,
+  fileName = 'upload.spec.ts',
+  stagedFiles: Array<{ path: string; content: string }> = [],
+  workflowName = ''
+): Promise<AnalysisResponse> {
+  return apiPost<AnalysisResponse>('/api/analysis/upload', { source, fileName, stagedFiles, workflowName });
 }
 
 export interface RecordingSession {

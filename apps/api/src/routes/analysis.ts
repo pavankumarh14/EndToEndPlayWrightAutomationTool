@@ -20,6 +20,7 @@ import {
   generateReusedFunctionalTest,
   generatePageObject
 } from '@platform/core';
+import { PageObjectModel } from '@platform/core';
 import { config, repositoryRoot } from '../config.js';
 
 const upload = multer({ dest: path.join(repositoryRoot, 'storage/uploads') });
@@ -32,11 +33,24 @@ analysisRouter.post('/upload', upload.single('script'), async (req, res, next) =
       file ? await fs.readFile(file.path, 'utf8') : typeof req.body.source === 'string' ? req.body.source : '';
     const fileName = file?.originalname ?? req.body.fileName ?? 'upload.spec.ts';
     const parsed = analyzeUploadedScript(source, fileName);
+    const requestedWorkflowName = normalizeWorkflowName(req.body?.workflowName);
+    if (requestedWorkflowName) {
+      parsed.workflows = parsed.workflows.map((workflow) => ({
+        ...workflow,
+        name: requestedWorkflowName,
+        intent: workflow.intent.replace(/^Workflow\s+[^;]+/, `Workflow ${requestedWorkflowName}`)
+      }));
+    }
     const indexer = new FrameworkIndexer(config);
-    const index = await indexer.buildIndex();
+    const persistedIndex = await indexer.buildIndex();
     // Keep the Project Library in sync with the analysis that the user is reviewing.
     // Otherwise a previously persisted snapshot can describe files that were removed.
-    await indexer.persist(index);
+    await indexer.persist(persistedIndex);
+    const stagedFiles = parseStagedFiles(req.body?.stagedFiles);
+    const index = {
+      ...persistedIndex,
+      pageObjects: [...persistedIndex.pageObjects, ...stagedPageObjects(stagedFiles)]
+    };
     const workflow = parsed.workflows[0];
     const retrieval = new RetrievalEngine().retrieve(workflow, index);
     const semanticRequest = {
@@ -210,6 +224,46 @@ function toPascal(value: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('') || 'Generated';
+}
+
+function parseStagedFiles(value: unknown): Array<{ path: string; content: string }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((file): file is { path: string; content: string } =>
+      typeof file === 'object' && file !== null &&
+      typeof (file as { path?: unknown }).path === 'string' &&
+      typeof (file as { content?: unknown }).content === 'string'
+    )
+    .map((file) => ({ path: file.path.replace(/\\/g, '/').replace(/^\.\//, ''), content: file.content }))
+    .filter((file) => (file.path.startsWith('pages/') || file.path.startsWith('components/')) && /\.(ts|tsx|js|jsx)$/.test(file.path));
+}
+
+function normalizeWorkflowName(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const name = value.trim().replace(/\s+/g, ' ');
+  if (!name) return undefined;
+  if (name.length > 80) throw new Error('Test name must be 80 characters or fewer.');
+  if (!/[a-zA-Z0-9]/.test(name)) throw new Error('Test name must include at least one letter or number.');
+  return name;
+}
+
+function stagedPageObjects(files: Array<{ path: string; content: string }>): PageObjectModel[] {
+  return files.map((file) => {
+    const methodDetails = [...file.content.matchAll(/(?:async\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*(?::[^ {]+)?\s*{/g)]
+      .filter((match) => !['if', 'for', 'while', 'switch', 'constructor'].includes(match[1]))
+      .map((match) => ({
+        name: match[1],
+        parameterCount: match[2].split(',').map((parameter) => parameter.trim()).filter(Boolean).length
+      }));
+    return {
+      name: path.basename(file.path).replace(/\.(ts|tsx|js|jsx)$/, ''),
+      filePath: file.path,
+      className: file.content.match(/export\s+class\s+([A-Za-z_][A-Za-z0-9_]*)/)?.[1],
+      methods: methodDetails.map((method) => method.name),
+      methodDetails,
+      locators: []
+    };
+  });
 }
 
 function toKebab(value: string): string {

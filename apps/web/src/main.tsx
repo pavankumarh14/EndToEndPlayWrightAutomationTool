@@ -51,6 +51,16 @@ type Notice = {
   visibleOn?: string[];
 };
 
+type StagedProposal = {
+  id: string;
+  workflowName: string;
+  files: AnalysisResponse['proposedChange']['files'];
+  approvalAllowed: boolean;
+  approvalReason: string;
+};
+
+const batchStorageKey = 'playwright-automation-studio.pr-batch';
+
 const modules = [
   ['Start Here', CircleHelp],
   ['Create Test', Upload],
@@ -81,11 +91,13 @@ const legacyPageRoutes: Record<string, string> = {
 function App() {
   const [active, setActive] = useState(() => pageFromHash());
   const [source, setSource] = useState(sample);
+  const [workflowName, setWorkflowName] = useState('');
   const [recordingUrl, setRecordingUrl] = useState('');
   const [recording, setRecording] = useState<RecordingSession | undefined>();
   const [recordingSource, setRecordingSource] = useState('');
   const [recordingDirty, setRecordingDirty] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResponse | undefined>();
+  const [stagedProposals, setStagedProposals] = useState<StagedProposal[]>(() => readStagedProposals());
   const [index, setIndex] = useState<FrameworkIndex | undefined>();
   const [governance, setGovernance] = useState<AnalysisResponse['governance'] | undefined>();
   const [execution, setExecution] = useState<any>();
@@ -140,6 +152,10 @@ function App() {
     }, 60_000);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => {
+    window.localStorage.setItem(batchStorageKey, JSON.stringify(stagedProposals));
+  }, [stagedProposals]);
 
   useEffect(() => {
     if (!githubLoginPending) return;
@@ -289,7 +305,7 @@ function App() {
       visibleOn: ['Create Test', 'Review & Approve']
     });
     try {
-      const result = await uploadScript(source);
+      const result = await uploadScript(source, 'upload.spec.ts', stagedProposals.flatMap((proposal) => proposal.files), workflowName);
       setAnalysis(result);
       setGovernance(result.governance);
       setNotice({
@@ -306,6 +322,41 @@ function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function stageCurrentProposal() {
+    if (!analysis) return;
+    const workflowName = analysis.parsed.workflows[0]?.name ?? 'Generated workflow';
+    const files = analysis.proposedChange.files;
+    const stagedPaths = new Set(stagedProposals.flatMap((proposal) => proposal.files.map((file) => file.path)));
+    const conflicts = files.map((file) => file.path).filter((file) => stagedPaths.has(file));
+    if (conflicts.length) {
+      setError(`This proposal cannot be added to the PR batch because it changes files already staged: ${conflicts.join(', ')}.`);
+      return;
+    }
+    setStagedProposals((current) => [
+      ...current,
+      {
+        id: `${workflowName}-${Date.now()}`,
+        workflowName,
+        files,
+        approvalAllowed: canApproveAnalysis(analysis),
+        approvalReason: approvalReason(analysis)
+      }
+    ]);
+    setAnalysis(undefined);
+    setSource('');
+    setNotice({
+      tone: 'success',
+      title: 'Test added to PR batch',
+      message: `${workflowName} is staged. Create and analyze the next workflow; approve the batch only when all staged tests are ready.`,
+      visibleOn: ['Create Test', 'Review & Approve']
+    });
+    navigate('Create Test');
+  }
+
+  function removeStagedProposal(id: string) {
+    setStagedProposals((current) => current.filter((proposal) => proposal.id !== id));
   }
 
   async function beginRecording() {
@@ -359,7 +410,7 @@ function App() {
       const session = await saveRecording(recording.id, recordingSource);
       setRecording(session);
       setSource(recordingSource);
-      const result = await uploadScript(recordingSource, 'recorded.spec.ts');
+      const result = await uploadScript(recordingSource, 'recorded.spec.ts', stagedProposals.flatMap((proposal) => proposal.files), workflowName);
       setAnalysis(result);
       setGovernance(result.governance);
       setNotice({
@@ -379,7 +430,22 @@ function App() {
   }
 
   async function applyChange() {
-    if (!analysis) return;
+    const currentProposal = analysis ? [{
+      id: 'current',
+      workflowName: analysis.parsed.workflows[0]?.name ?? 'Generated workflow',
+      files: analysis.proposedChange.files,
+      approvalAllowed: canApproveAnalysis(analysis),
+      approvalReason: approvalReason(analysis)
+    }] : [];
+    const proposals = [...stagedProposals, ...currentProposal];
+    if (!proposals.length) return;
+    const blocked = proposals.filter((proposal) => !proposal.approvalAllowed);
+    if (blocked.length) {
+      setError(`Cannot approve this batch yet. Resolve and re-analyze: ${blocked.map((proposal) => proposal.workflowName).join(', ')}. ${blocked[0].approvalReason}`);
+      return;
+    }
+    const files = proposals.flatMap((proposal) => proposal.files);
+    const workflowNames = proposals.map((proposal) => proposal.workflowName);
     setBusy(true);
     setNotice({
       tone: 'info',
@@ -392,15 +458,19 @@ function App() {
       const readiness = await getPullRequestReadiness();
       setPullRequestReadiness(readiness);
       if (!readiness.ready) throw new Error(`GitHub pull request cannot be created: ${readiness.blockers.join(' ')}`);
-      await apiPost('/api/analysis/apply', { files: analysis.proposedChange.files, approved: true });
+      await apiPost('/api/analysis/apply', { files, approved: true });
       filesApplied = true;
-      const workflowName = analysis.parsed.workflows[0]?.name ?? 'generated workflow';
+      const title = workflowNames.length === 1
+        ? `Add ${workflowNames[0]} Playwright automation`
+        : `Add ${workflowNames.length} Playwright automation workflows`;
       const createdPullRequest = await createPullRequest({
-        files: analysis.proposedChange.files.map((file) => file.path),
-        title: `Add ${workflowName} Playwright automation`,
-        body: `## Summary\n\n- Adds generated Playwright automation for ${workflowName}.\n- Includes a page object, functional test, and accessibility test.\n\n## Validation\n\n- Reviewed through Enterprise Playwright Platform before approval.`
+        files: files.map((file) => file.path),
+        title,
+        body: `## Summary\n\n${workflowNames.map((name) => `- Adds generated Playwright automation for ${name}.`).join('\n')}\n\n## Validation\n\n- Reviewed through Playwright Automation Studio before approval.`
       });
       setPullRequest(createdPullRequest);
+      setStagedProposals([]);
+      setAnalysis(undefined);
       await refreshIndex();
       await refreshLearning();
       await refreshGit();
@@ -546,7 +616,7 @@ function App() {
                 </label>
               </>
             )}
-            {active === 'Review & Approve' && <button onClick={applyChange} disabled={busy || !analysis}><CheckCircle2 size={16} />Approve files</button>}
+            {active === 'Review & Approve' && <button onClick={applyChange} disabled={busy || (!analysis && !stagedProposals.length) || !batchCanBeApproved(stagedProposals, analysis)}><CheckCircle2 size={16} />Approve {stagedProposals.length ? `${stagedProposals.length + (analysis ? 1 : 0)} workflows` : 'files'}</button>}
           </div>
         </header>
         {error && <div className="alert">{error}</div>}
@@ -557,6 +627,8 @@ function App() {
             <UploadCenter
               source={source}
               setSource={setSource}
+              workflowName={workflowName}
+              setWorkflowName={setWorkflowName}
               recordingUrl={recordingUrl}
               setRecordingUrl={setRecordingUrl}
               recording={recording}
@@ -577,6 +649,9 @@ function App() {
               sendFeedback={sendFeedback}
               setActive={navigate}
               approve={applyChange}
+              stageCurrentProposal={stageCurrentProposal}
+              stagedProposals={stagedProposals}
+              removeStagedProposal={removeStagedProposal}
               busy={busy}
             />
           )}
@@ -692,6 +767,8 @@ function GuideStep({ number, title, text, action, onClick }: { number: string; t
 function UploadCenter(props: {
   source: string;
   setSource: (value: string) => void;
+  workflowName: string;
+  setWorkflowName: (value: string) => void;
   recordingUrl: string;
   setRecordingUrl: (value: string) => void;
   recording?: RecordingSession;
@@ -705,6 +782,17 @@ function UploadCenter(props: {
   return (
     <div className="stack">
       <p className="intake-intro">Choose one way to create your Playwright script:</p>
+      <div className="test-name-field">
+        <label htmlFor="workflow-name">Test name <span>(optional)</span></label>
+        <input
+          id="workflow-name"
+          value={props.workflowName}
+          onChange={(event) => props.setWorkflowName(event.target.value)}
+          placeholder="For example: account settings update"
+          maxLength={80}
+        />
+        <p>Used for generated file names and test titles. Leave blank to use the name detected from your script.</p>
+      </div>
       <div className="intake-options">
         <div className="panel wide">
           <h2>1. Upload or paste a script</h2>
@@ -843,19 +931,38 @@ function Confidence({
   sendFeedback,
   setActive,
   approve,
+  stageCurrentProposal,
+  stagedProposals,
+  removeStagedProposal,
   busy
 }: {
   analysis?: AnalysisResponse;
   sendFeedback: (action: 'accepted' | 'rejected' | 'modified') => Promise<void>;
   setActive: (value: string) => void;
   approve: () => Promise<void>;
+  stageCurrentProposal: () => void;
+  stagedProposals: StagedProposal[];
+  removeStagedProposal: (id: string) => void;
   busy: boolean;
 }) {
-  if (!analysis) return <Empty label="Analyze an upload to populate confidence scoring." />;
+  if (!analysis && !stagedProposals.length) return <Empty label="Analyze a script to review it, or stage several reviewed scripts here as one pull-request batch." />;
+  if (!analysis) {
+    return (
+      <div className="stack">
+        <BatchPanel proposals={stagedProposals} remove={removeStagedProposal} approve={approve} busy={busy} showApprove />
+        <div className="panel">
+          <h2>Ready for the next workflow</h2>
+          <p className="helper-text">Your staged tests are not written yet. Create and analyze another script, or approve this batch to write all staged files and create one draft pull request.</p>
+          <button className="primary" onClick={() => setActive('Create Test')}>Create another test</button>
+        </div>
+      </div>
+    );
+  }
   const learningFactors = analysis.confidence.learningInfluence?.factors ?? [];
   const learningAdjustment = analysis.confidence.learningInfluence?.adjustment ?? 0;
   const hasPastExperience = learningFactors.length > 0;
   const workflowSimilarity = analysis.confidence.similarityMetrics.workflowSimilarity ?? 0;
+  const approvalAllowed = canApproveAnalysis(analysis);
   return (
     <div className="workspace">
       <div className="panel">
@@ -868,16 +975,20 @@ function Confidence({
           <button onClick={() => setActive('Create Test')}><ArrowLeft size={16} />Edit Upload</button>
           <button onClick={() => setActive('Functional Tests')}>Preview Functional</button>
           <button onClick={() => setActive('Accessibility Tests')}>Preview A11y</button>
-          <button className="primary" onClick={approve} disabled={busy}><CheckCircle2 size={16} />Approve Files</button>
+          <button onClick={stageCurrentProposal} disabled={busy}>Add to PR batch</button>
+          <button className="primary" onClick={approve} disabled={busy || !batchCanBeApproved(stagedProposals, analysis)}><CheckCircle2 size={16} />Approve {stagedProposals.length ? `${stagedProposals.length + 1} workflows` : 'files'}</button>
         </div>
-        <p className="helper-text">Feedback changes learning data only. Approve writes the proposed files to the repository.</p>
+        <p className="helper-text">Add to PR batch lets you create and review another workflow before writing anything. Approve writes the current proposal and every staged proposal to one draft pull request.</p>
+        {!approvalAllowed && <p className="approval-blocked">Approval is unavailable: {approvalReason(analysis)} Edit the script or analyze a safer proposal before approving.</p>}
         <div className="feedback-actions">
           <button onClick={() => sendFeedback('accepted')}>Accept</button>
           <button onClick={() => sendFeedback('modified')}>Modify</button>
           <button onClick={() => sendFeedback('rejected')}>Reject</button>
         </div>
       </div>
-      <div className="panel wide">
+      <div className="stack">
+        {stagedProposals.length > 0 && <BatchPanel proposals={stagedProposals} remove={removeStagedProposal} approve={approve} busy={busy} showApprove={false} />}
+        <div className="panel wide">
         <h2>What we checked</h2>
         <p className="helper-text">These checks help you decide whether the generated files are safe to review and approve.</p>
         {analysis.semanticReview?.status === 'fallback' && (
@@ -942,6 +1053,35 @@ function Confidence({
           ...(analysis.semanticReview?.message ? [['Fallback message', analysis.semanticReview.message, 'The analysis still completed using safe local rules.']] : [])
         ]} />
       </div>
+      </div>
+    </div>
+  );
+}
+
+function BatchPanel({ proposals, remove, approve, busy, showApprove }: {
+  proposals: StagedProposal[];
+  remove: (id: string) => void;
+  approve: () => Promise<void>;
+  busy: boolean;
+  showApprove: boolean;
+}) {
+  const fileCount = proposals.reduce((total, proposal) => total + proposal.files.length, 0);
+  const blocked = proposals.filter((proposal) => !proposal.approvalAllowed);
+  return (
+    <div className="panel pr-batch">
+      <h2>Staged for batch — {proposals.length} {proposals.length === 1 ? 'workflow' : 'workflows'}</h2>
+      <p className="helper-text">These reviewed proposals will be written together and included in one draft pull request. They are not in the repository yet.</p>
+      <div className="batch-items">
+        {proposals.map((proposal) => (
+          <div key={proposal.id} className="batch-item">
+            <span><strong>{proposal.workflowName}</strong><small>{proposal.files.map((file) => file.path).join(', ')}</small>{!proposal.approvalAllowed && <small className="approval-blocked">Needs attention: {proposal.approvalReason}</small>}</span>
+            <button onClick={() => remove(proposal.id)} disabled={busy}>Remove</button>
+          </div>
+        ))}
+      </div>
+      {showApprove && <div className="next-actions">
+        <button className="primary" onClick={approve} disabled={busy || blocked.length > 0}><CheckCircle2 size={16} />Approve {proposals.length} workflows ({fileCount} files)</button>
+      </div>}
     </div>
   );
 }
@@ -1278,6 +1418,40 @@ function hashForPage(page: string): string {
 
 function slugify(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+function readStagedProposals(): StagedProposal[] {
+  try {
+    const stored = window.localStorage.getItem(batchStorageKey);
+    const parsed = stored ? JSON.parse(stored) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((proposal): proposal is StagedProposal =>
+      typeof proposal?.id === 'string' &&
+      typeof proposal?.workflowName === 'string' &&
+      typeof proposal?.approvalAllowed === 'boolean' &&
+      typeof proposal?.approvalReason === 'string' &&
+      Array.isArray(proposal?.files) &&
+      proposal.files.every((file: unknown) => typeof (file as { path?: unknown })?.path === 'string' && typeof (file as { content?: unknown })?.content === 'string')
+    );
+  } catch {
+    return [];
+  }
+}
+
+function canApproveAnalysis(analysis: AnalysisResponse): boolean {
+  return analysis.quality.passed && ['auto', 'approval'].includes(analysis.confidence.band);
+}
+
+function approvalReason(analysis: AnalysisResponse): string {
+  if (!analysis.quality.passed) return 'One or more project quality checks did not pass.';
+  if (analysis.confidence.band === 'high-risk') return 'The confidence score is high risk.';
+  if (analysis.confidence.band === 'recommendation') return 'This is a recommendation only and requires a safer re-analysis.';
+  return 'Ready for approval.';
+}
+
+function batchCanBeApproved(stagedProposals: StagedProposal[], analysis?: AnalysisResponse): boolean {
+  const currentAllowed = analysis ? canApproveAnalysis(analysis) : true;
+  return currentAllowed && stagedProposals.every((proposal) => proposal.approvalAllowed);
 }
 
 function pageDescription(active: string, analysis?: AnalysisResponse, execution?: any): string {

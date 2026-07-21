@@ -95,4 +95,4 @@ storage/
 
 ## Approval Flow
 
-The API requires explicit approval in `/api/analysis/apply`. When GitHub prerequisites are met, the approved file set is committed on an isolated automation branch, pushed, and opened or updated as a draft PR. The API returns the local checkout to the default branch after the operation. Production hardening can add role-based approval and immutable audit records.
+The API requires explicit approval in `/api/analysis/apply`. The web console can hold multiple reviewed proposals in a browser-local PR batch; none are written until the user approves the batch. When GitHub prerequisites are met, the approved file set is committed on an isolated automation branch, pushed, and opened or updated as a draft PR. The Git service uses a Studio marker to find the existing draft PR and has a compatibility fallback only when exactly one legacy automation draft PR is unambiguous. The API returns the local checkout to the default branch after the operation. Production hardening can add role-based approval and immutable audit records.

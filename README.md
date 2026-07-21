@@ -98,7 +98,7 @@ To create pull requests, install and authenticate GitHub CLI on the machine runn
 gh auth login
 ```
 
-The Git & Pull Requests tab lets users configure the GitHub repository URL, displays diagnostics, and starts GitHub CLI's secure browser sign-in. Saving a repository URL only updates the local Git `origin` remote—it does not upload, commit, or create a pull request. The app deliberately does not accept or store GitHub keys; GitHub CLI stores credentials securely. The project must be on its default branch so the platform can create an isolated branch and avoid committing unrelated worktree files. Later approvals update the same open draft PR when applicable. Open the draft PR in GitHub to mark it ready for review, request reviewers, merge it, or close it; the app can also close a draft PR and optionally delete its remote branch.
+The Git & Pull Requests tab lets users configure the GitHub repository URL, displays diagnostics, and starts GitHub CLI's secure browser sign-in. Saving a repository URL only updates the local Git `origin` remote—it does not upload, commit, or create a pull request. The app deliberately does not accept or store GitHub keys; GitHub CLI stores credentials securely. The project must be on its default branch so the platform can create an isolated branch and avoid committing unrelated worktree files. Later approvals update one unambiguous open Studio draft PR rather than creating another PR. Open the draft PR in GitHub to mark it ready for review, request reviewers, merge it, or close it; the app can also close a draft PR and optionally delete its remote branch.
 
 On first load, the Upload Center shows a sample Playwright login script and two intake paths:
 
@@ -191,10 +191,11 @@ npm run index        # Build and persist the framework index
 2. Open the web console at `http://localhost:5173`.
 3. Paste or upload a Playwright Codegen script in the Upload Center.
 4. Review the proposal: project rules, change scope, reusable assets, confidence, and optional AI/context information.
-5. Approve the generated change only when it is acceptable.
-6. The API writes only approved files into `pages/`, `tests/functional/`, and `tests/accessibility/`, then rebuilds `storage/indexes/framework-index.json`.
-7. If GitHub is configured, approval creates or updates a draft pull request containing only those approved files.
-8. Run approved tests from **Run Tests** or with `npm run test:e2e`.
+5. Choose **Add to PR batch** to stage a reviewed workflow without writing it. Repeat the Create Test and review steps for every workflow you want in the same pull request.
+6. Use **Approve batch** when all staged workflows are correct. You can remove a staged workflow before approval.
+7. The API writes only approved files into `pages/`, `tests/functional/`, and `tests/accessibility/`, then rebuilds `storage/indexes/framework-index.json`.
+8. If GitHub is configured, approval creates or updates one draft pull request containing only those approved files.
+9. Run approved tests from **Run Tests** or with `npm run test:e2e`.
 
 ## REST API
 

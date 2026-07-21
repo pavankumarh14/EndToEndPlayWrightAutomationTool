@@ -61,7 +61,7 @@ export class GitService {
     const ghVersion = await this.tryRun('gh', ['--version']);
     const authenticated = ghVersion ? await this.tryRun('gh', ['auth', 'status']) : undefined;
     const baseBranch = authenticated ? await this.tryRun('gh', ['repo', 'view', '--json', 'defaultBranchRef', '--jq', '.defaultBranchRef.name']) : undefined;
-    const existingPullRequest = authenticated && branch ? await this.currentAutomationPullRequest(branch) : undefined;
+    const existingPullRequest = authenticated ? await this.currentAutomationPullRequest(branch) : undefined;
 
     if (!branch) blockers.push('Git has no current branch.');
     if (!remote) blockers.push('No GitHub remote named origin is configured.');
@@ -134,10 +134,12 @@ export class GitService {
     if (!changed.trim()) throw new Error('None of the approved generated files have changes to commit.');
 
     if (readiness.existingPullRequest) {
+      const targetBranch = readiness.existingPullRequest.branch;
+      if (readiness.branch !== targetBranch) await this.run(['checkout', targetBranch]);
       await this.run(['add', '--', ...files]);
       await this.run(['commit', '-m', input.title]);
       const commit = await this.run(['rev-parse', '--short', 'HEAD']);
-      await this.run(['push', 'origin', readiness.branch]);
+      await this.run(['push', 'origin', targetBranch]);
       return {
         url: readiness.existingPullRequest.url,
         branch: readiness.existingPullRequest.branch,
@@ -165,7 +167,7 @@ export class GitService {
       '--title',
       input.title,
       '--body',
-      input.body
+      withPlatformMarker(input.body)
     ]);
     const url = output.match(/https:\/\/github\.com\/[^\s]+\/pull\/\d+/)?.[0];
     if (!url) throw new Error(`GitHub did not return a pull request URL: ${output}`);
@@ -226,14 +228,26 @@ export class GitService {
     return unique;
   }
 
-  private async currentAutomationPullRequest(branch: string): Promise<PullRequestReadiness['existingPullRequest']> {
-    if (!/^automation\/[a-z0-9][a-z0-9-]*$/i.test(branch)) return undefined;
-    const output = await this.tryRun('gh', ['pr', 'view', '--json', 'url,state,isDraft,headRefName']);
+  private async currentAutomationPullRequest(branch?: string): Promise<PullRequestReadiness['existingPullRequest']> {
+    if (branch && /^automation\/[a-z0-9][a-z0-9-]*$/i.test(branch)) {
+      const current = await this.tryRun('gh', ['pr', 'view', '--json', 'url,state,isDraft,headRefName,body']);
+      const parsedCurrent = current ? parsePlatformPullRequest(current) : undefined;
+      if (parsedCurrent?.branch === branch) return parsedCurrent;
+    }
+    const output = await this.tryRun('gh', ['pr', 'list', '--state', 'open', '--json', 'url,headRefName,isDraft,body', '--limit', '100']);
     if (!output) return undefined;
     try {
-      const pullRequest = JSON.parse(output) as { url?: string; state?: string; isDraft?: boolean; headRefName?: string };
-      if (pullRequest.state !== 'OPEN' || pullRequest.headRefName !== branch || !pullRequest.url) return undefined;
-      return { url: pullRequest.url, branch, isDraft: pullRequest.isDraft === true };
+      const pullRequests = JSON.parse(output) as Array<{ url?: string; headRefName?: string; isDraft?: boolean; body?: string }>;
+      const marked = pullRequests.map((pullRequest) => parsePlatformPullRequest(JSON.stringify(pullRequest))).find(Boolean);
+      if (marked) return marked;
+      // Compatibility for draft PRs created before the Studio marker existed.
+      // Only reuse one unambiguous draft automation branch; never guess between several.
+      const legacyCandidates = pullRequests.filter((pullRequest) =>
+        pullRequest.isDraft === true && Boolean(pullRequest.url) && /^automation\/[a-z0-9][a-z0-9-]*$/i.test(pullRequest.headRefName ?? '')
+      );
+      if (legacyCandidates.length !== 1) return undefined;
+      const legacy = legacyCandidates[0];
+      return { url: legacy.url!, branch: legacy.headRefName!, isDraft: true };
     } catch {
       return undefined;
     }
@@ -246,6 +260,24 @@ export class GitService {
     } catch {
       return false;
     }
+  }
+}
+
+const platformPullRequestMarker = '<!-- playwright-automation-studio -->';
+
+function withPlatformMarker(body: string): string {
+  return body.includes(platformPullRequestMarker) ? body : `${body}\n\n${platformPullRequestMarker}`;
+}
+
+function parsePlatformPullRequest(value: string): PullRequestReadiness['existingPullRequest'] | undefined {
+  try {
+    const pullRequest = JSON.parse(value) as { url?: string; state?: string; isDraft?: boolean; headRefName?: string; body?: string };
+    if (pullRequest.state && pullRequest.state !== 'OPEN') return undefined;
+    if (!pullRequest.url || !pullRequest.isDraft || !pullRequest.headRefName?.match(/^automation\/[a-z0-9][a-z0-9-]*$/i)) return undefined;
+    if (!pullRequest.body?.includes(platformPullRequestMarker)) return undefined;
+    return { url: pullRequest.url, branch: pullRequest.headRefName, isDraft: true };
+  } catch {
+    return undefined;
   }
 }
 

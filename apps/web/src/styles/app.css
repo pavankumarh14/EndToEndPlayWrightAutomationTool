@@ -154,6 +154,46 @@ h2 {
   margin-top: 16px;
 }
 
+.pr-batch {
+  border-color: #9fd8c9;
+  background: #f7fffd;
+}
+
+.batch-items {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.batch-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid #d6e8e4;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.batch-item span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.batch-item small {
+  overflow-wrap: anywhere;
+  color: #617086;
+  font-size: 12px;
+}
+
+.approval-blocked {
+  color: #a11b1b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .primary,
 .actions button:first-child {
   background: #0f766e;
@@ -210,6 +250,36 @@ h2 {
 .intake-intro {
   color: #4c5d73;
   font-weight: 650;
+}
+
+.test-name-field {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 560px);
+}
+
+.test-name-field label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.test-name-field label span,
+.test-name-field p {
+  color: #617086;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.test-name-field p {
+  margin: 0;
+}
+
+.test-name-field input {
+  min-height: 38px;
+  border: 1px solid #cfd7e3;
+  border-radius: 6px;
+  padding: 0 10px;
+  font: inherit;
 }
 
 .intake-options {

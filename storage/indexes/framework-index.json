@@ -1,19 +1,202 @@
 {
-  "generatedAt": "2026-07-21T04:01:02.786Z",
+  "generatedAt": "2026-07-21T08:05:25.683Z",
   "repositoryRoot": "/Users/pavankumarh/Documents/EndToEndPlayWrightAutomationTool",
-  "tests": [],
-  "workflows": [],
-  "pageObjects": [],
-  "locators": [],
-  "accessibility": [],
+  "tests": [
+    {
+      "name": "checkoutflow.a11y.spec.ts",
+      "filePath": "tests/accessibility/checkoutflow.a11y.spec.ts",
+      "workflows": [
+        "CheckoutFlow accessibility"
+      ],
+      "tags": [
+        "@playwright",
+        "@axe-core"
+      ],
+      "hasAccessibilityCoverage": true
+    },
+    {
+      "name": "loginflow.a11y.spec.ts",
+      "filePath": "tests/accessibility/loginflow.a11y.spec.ts",
+      "workflows": [
+        "LoginFlow accessibility"
+      ],
+      "tags": [
+        "@playwright",
+        "@axe-core"
+      ],
+      "hasAccessibilityCoverage": true
+    },
+    {
+      "name": "checkoutflow.spec.ts",
+      "filePath": "tests/functional/checkoutflow.spec.ts",
+      "workflows": [
+        "CheckoutFlow"
+      ],
+      "tags": [
+        "@playwright"
+      ],
+      "hasAccessibilityCoverage": false
+    },
+    {
+      "name": "loginflow.spec.ts",
+      "filePath": "tests/functional/loginflow.spec.ts",
+      "workflows": [
+        "LoginFlow"
+      ],
+      "tags": [
+        "@playwright"
+      ],
+      "hasAccessibilityCoverage": false
+    }
+  ],
+  "workflows": [
+    {
+      "id": "bb7199841526",
+      "name": "CheckoutFlow accessibility",
+      "intent": "Workflow CheckoutFlow accessibility",
+      "sourceFile": "tests/accessibility/checkoutflow.a11y.spec.ts",
+      "actions": [],
+      "assertions": [],
+      "navigation": [],
+      "tags": [
+        "@playwright",
+        "@axe-core"
+      ],
+      "dataUsage": []
+    },
+    {
+      "id": "f64096cbeeb1",
+      "name": "LoginFlow accessibility",
+      "intent": "Workflow LoginFlow accessibility",
+      "sourceFile": "tests/accessibility/loginflow.a11y.spec.ts",
+      "actions": [],
+      "assertions": [],
+      "navigation": [],
+      "tags": [
+        "@playwright",
+        "@axe-core"
+      ],
+      "dataUsage": []
+    },
+    {
+      "id": "4d2da2810a84",
+      "name": "CheckoutFlow",
+      "intent": "Workflow CheckoutFlow",
+      "sourceFile": "tests/functional/checkoutflow.spec.ts",
+      "actions": [],
+      "assertions": [],
+      "navigation": [],
+      "tags": [
+        "@playwright"
+      ],
+      "dataUsage": []
+    },
+    {
+      "id": "4b7f6a038c75",
+      "name": "LoginFlow",
+      "intent": "Workflow LoginFlow",
+      "sourceFile": "tests/functional/loginflow.spec.ts",
+      "actions": [],
+      "assertions": [],
+      "navigation": [],
+      "tags": [
+        "@playwright"
+      ],
+      "dataUsage": []
+    }
+  ],
+  "pageObjects": [
+    {
+      "name": "CheckoutFlowPage",
+      "filePath": "pages/CheckoutFlowPage.ts",
+      "className": "CheckoutFlowPage",
+      "methods": [],
+      "methodDetails": [],
+      "locators": [
+        {
+          "id": "pages/CheckoutFlowPage.ts:359:text",
+          "raw": "getByText('Swag Labs')",
+          "strategy": "text",
+          "value": "Swag Labs",
+          "filePath": "pages/CheckoutFlowPage.ts",
+          "score": 82,
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "name": "LoginFlowPage",
+      "filePath": "pages/LoginFlowPage.ts",
+      "className": "LoginFlowPage",
+      "methods": [],
+      "methodDetails": [],
+      "locators": [
+        {
+          "id": "pages/LoginFlowPage.ts:350:text",
+          "raw": "getByText('Swag Labs')",
+          "strategy": "text",
+          "value": "Swag Labs",
+          "filePath": "pages/LoginFlowPage.ts",
+          "score": 82,
+          "warnings": []
+        }
+      ]
+    }
+  ],
+  "locators": [
+    {
+      "id": "pages/CheckoutFlowPage.ts:359:text",
+      "raw": "getByText('Swag Labs')",
+      "strategy": "text",
+      "value": "Swag Labs",
+      "filePath": "pages/CheckoutFlowPage.ts",
+      "score": 82,
+      "warnings": []
+    },
+    {
+      "id": "pages/LoginFlowPage.ts:350:text",
+      "raw": "getByText('Swag Labs')",
+      "strategy": "text",
+      "value": "Swag Labs",
+      "filePath": "pages/LoginFlowPage.ts",
+      "score": 82,
+      "warnings": []
+    }
+  ],
+  "accessibility": [
+    {
+      "name": "checkoutflow.a11y.spec.ts",
+      "filePath": "tests/accessibility/checkoutflow.a11y.spec.ts",
+      "workflows": [
+        "CheckoutFlow accessibility"
+      ],
+      "tags": [
+        "@playwright",
+        "@axe-core"
+      ],
+      "hasAccessibilityCoverage": true
+    },
+    {
+      "name": "loginflow.a11y.spec.ts",
+      "filePath": "tests/accessibility/loginflow.a11y.spec.ts",
+      "workflows": [
+        "LoginFlow accessibility"
+      ],
+      "tags": [
+        "@playwright",
+        "@axe-core"
+      ],
+      "hasAccessibilityCoverage": true
+    }
+  ],
   "tokenStats": {
-    "repositorySizeBytes": 2650,
-    "indexedFiles": 1,
+    "repositorySizeBytes": 4733,
+    "indexedFiles": 7,
     "retrievedFiles": 0,
-    "estimatedTokensBeforeRetrieval": 663,
-    "estimatedTokensAfterRetrieval": 0,
-    "tokenReductionPercent": 100,
-    "processingTimeMs": 5,
+    "estimatedTokensBeforeRetrieval": 1184,
+    "estimatedTokensAfterRetrieval": 28,
+    "tokenReductionPercent": 97.64,
+    "processingTimeMs": 10,
     "aiUsageBreakdown": {}
   }
 }
