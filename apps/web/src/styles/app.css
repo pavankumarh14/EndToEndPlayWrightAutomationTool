@@ -587,40 +587,24 @@ textarea {
   gap: 8px;
 }
 
-.test-selection-list {
+.test-selector {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  width: min(100%, 620px);
   margin-top: 14px;
-}
-
-.test-selection-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid #dbe3ed;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.test-selection-item:has(input:checked) {
-  border-color: #72baae;
-  background: #f0fdfa;
-}
-
-.test-selection-item input {
-  width: 16px;
-  height: 16px;
-}
-
-.test-selection-item span {
-  display: grid;
-  gap: 2px;
-}
-
-.test-selection-item small {
   color: #617086;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.test-selector select {
+  min-height: 38px;
+  border: 1px solid #cfd7e3;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: #1d2430;
+  font: inherit;
 }
 
 .recording-controls input {

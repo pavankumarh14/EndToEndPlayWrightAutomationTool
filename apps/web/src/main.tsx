@@ -1757,47 +1757,28 @@ function Execution({
   return (
     <div className="stack">
       <div className="panel wide">
-        <div className="section-header">
-          <div>
-            <h2>Choose tests to run</h2>
-            <p className="helper-text">
-              These test files are from the currently checked-out branch. Select one or more files
-              to run only those tests, or leave the list empty to use the functional/accessibility
-              option above.
-            </p>
-          </div>
-          <button onClick={() => setSelectedTestFiles([])} disabled={!selectedTestFiles.length}>
-            Clear selection
-          </button>
-        </div>
+        <h2>Choose a test to run</h2>
+        <p className="helper-text">
+          These test files are from the currently checked-out branch. Choose one file to run only
+          that test, or use the default suite selected by the accessibility option above.
+        </p>
         {availableTests.length ? (
-          <div className="test-selection-list">
-            {availableTests.map((test) => {
-              const selected = selectedTestFiles.includes(test.filePath);
-              return (
-                <label key={test.filePath} className="test-selection-item">
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={() =>
-                      setSelectedTestFiles((current) =>
-                        selected
-                          ? current.filter((file) => file !== test.filePath)
-                          : [...current, test.filePath],
-                      )
-                    }
-                  />
-                  <span>
-                    <strong>{test.name}</strong>
-                    <small>
-                      {test.filePath}
-                      {test.hasAccessibilityCoverage ? ' · accessibility' : ' · functional'}
-                    </small>
-                  </span>
-                </label>
-              );
-            })}
-          </div>
+          <label className="test-selector">
+            <span>Test file</span>
+            <select
+              value={selectedTestFiles[0] ?? ''}
+              onChange={(event) =>
+                setSelectedTestFiles(event.target.value ? [event.target.value] : [])
+              }
+            >
+              <option value="">Default test suite</option>
+              {availableTests.map((test) => (
+                <option key={test.filePath} value={test.filePath}>
+                  {test.name} — {test.hasAccessibilityCoverage ? 'accessibility' : 'functional'}
+                </option>
+              ))}
+            </select>
+          </label>
         ) : (
           <div className="empty">No approved test files are available on this branch yet.</div>
         )}
