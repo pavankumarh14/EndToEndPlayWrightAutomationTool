@@ -11,5 +11,6 @@ export class CheckoutFlowPage {
 
   async verifyCheckoutFlow(): Promise<void> {
     await expect(this.page.getByText('Swag Labs')).toBeVisible();
+    await expect(this.page.getByText('Swag Labs')).toBeVisible();
   }
 }
