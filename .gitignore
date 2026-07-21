@@ -6,4 +6,7 @@ playwright-report
 .env
 storage/uploads
 storage/codegen-sessions
+storage/indexes/framework-index.json
+storage/learning/events.json
+storage/learning/team-profile.json
 *.log
