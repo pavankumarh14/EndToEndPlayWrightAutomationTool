@@ -9,11 +9,12 @@ export class ConfidenceEngine {
     retrievedAssetsUsed: string[];
     similarityMetrics: Record<string, number>;
   }): ConfidenceDecision {
-    const semantic = input.semanticScore ?? input.deterministicScore;
-    const score = Math.max(
-      0,
-      Math.min(100, Math.round(input.deterministicScore * 0.7 + semantic * 0.3))
-    );
+    // AI is a narrow semantic reviewer, not a replacement for deterministic evidence.
+    // It may refine the local score by at most ten points.
+    const semanticAdjustment = input.semanticScore === undefined
+      ? 0
+      : Math.max(-10, Math.min(10, input.semanticScore - input.deterministicScore));
+    const score = Math.max(0, Math.min(100, Math.round(input.deterministicScore + semanticAdjustment)));
 
     return {
       subject: input.subject,

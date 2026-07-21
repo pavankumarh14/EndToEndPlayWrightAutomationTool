@@ -383,6 +383,12 @@ h2 {
   margin-top: 22px;
 }
 
+.folder-heading {
+  margin: 4px 2px -6px;
+  color: #4c5d73;
+  font-size: 14px;
+}
+
 .technical-details {
   margin-top: 20px;
   border-top: 1px solid #dbe3ed;

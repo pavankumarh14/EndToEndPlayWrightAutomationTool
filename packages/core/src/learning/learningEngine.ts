@@ -133,6 +133,18 @@ export class FrameworkLearningEngine {
 
   async adaptiveInfluence(input: AdaptiveConfidenceInput): Promise<LearningInfluence> {
     const events = await this.readEvents();
+    // Generic patterns such as "uses page objects" must not make an unrelated
+    // workflow appear safer. Historical adjustments require a meaningful local match.
+    if ((input.similarityScore ?? 0) < 50) {
+      return {
+        originalScore: input.baseScore,
+        finalScore: input.baseScore,
+        adjustment: 0,
+        factors: [],
+        standardsApplied: [],
+        historicalPatterns: []
+      };
+    }
     const matchingEvents = events.filter((event) => event.patterns.some((pattern) => input.patterns.includes(pattern)));
     const accepted = matchingEvents.filter((event) => event.action === 'accepted' || event.action === 'modified');
     const rejected = matchingEvents.filter((event) => event.action === 'rejected');

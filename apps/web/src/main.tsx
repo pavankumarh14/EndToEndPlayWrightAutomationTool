@@ -85,7 +85,8 @@ const legacyPageRoutes: Record<string, string> = {
   'self-healing-console': 'Run Tests',
   'ai-insights': 'AI Insights',
   'learning-dashboard': 'Learning Dashboard',
-  'token-analytics': 'Token Analytics'
+  'token-analytics': 'Token Analytics',
+  'proposed-files': 'Proposed Files'
 };
 
 function App() {
@@ -697,6 +698,7 @@ function App() {
               emptyLabel="Analyze an upload to preview generated accessibility tests."
             />
           )}
+          {active === 'Proposed Files' && <ProposedFiles analysis={analysis} setActive={navigate} />}
           {active === 'Run Tests' && <Execution execution={execution} hasTests={Boolean(index?.tests.length)} />}
           {active === 'AI Insights' && <AiInsights analysis={analysis} />}
           {active === 'Learning Dashboard' && <LearningDashboard learning={learning} />}
@@ -1003,6 +1005,7 @@ function Confidence({
           <button onClick={() => setActive('Create Test')}><ArrowLeft size={16} />Edit Upload</button>
           <button onClick={() => setActive('Functional Tests')}>Preview Functional</button>
           <button onClick={() => setActive('Accessibility Tests')}>Preview A11y</button>
+          <button onClick={() => setActive('Proposed Files')}>Preview all files</button>
           <button onClick={stageCurrentProposal} disabled={busy}>Add to PR batch</button>
           <button className="primary" onClick={approve} disabled={busy || !batchCanBeApproved(stagedProposals, analysis)}><CheckCircle2 size={16} />Approve {stagedProposals.length ? `${stagedProposals.length + 1} workflows` : 'files'}</button>
         </div>
@@ -1161,6 +1164,39 @@ function GeneratedFiles({
         </div>
       </div>
       {files.length ? files.map((file) => <CodePanel key={file.path} title={file.path} code={file.content} />) : <Empty label={emptyLabel} />}
+    </div>
+  );
+}
+
+function ProposedFiles({ analysis, setActive }: { analysis?: AnalysisResponse; setActive: (value: string) => void }) {
+  if (!analysis) return <Empty label="Analyze a script first to preview every proposed file." />;
+  const groups = new Map<string, AnalysisResponse['proposedChange']['files']>();
+  for (const file of analysis.proposedChange.files) {
+    const folder = file.path.split('/').slice(0, -1).join('/') || 'Project root';
+    groups.set(folder, [...(groups.get(folder) ?? []), file]);
+  }
+  return (
+    <div className="stack">
+      <div className="panel wide">
+        <div className="section-header">
+          <div>
+            <h2>All proposed files</h2>
+            <p className="helper-text">Review every file that will be created or updated after approval. Files are grouped by their destination folder.</p>
+          </div>
+          <button onClick={() => setActive('Review & Approve')}><ArrowLeft size={16} />Back to Review</button>
+        </div>
+        <Table rows={analysis.proposedChange.files.map((file) => [
+          file.action === 'update' ? 'Update existing file' : 'Create new file',
+          file.path,
+          `Folder: ${file.path.split('/').slice(0, -1).join('/') || 'project root'}`
+        ])} />
+      </div>
+      {[...groups.entries()].map(([folder, files]) => (
+        <div key={folder} className="stack">
+          <h2 className="folder-heading">{folder}</h2>
+          {files.map((file) => <CodePanel key={file.path} title={`${file.action === 'update' ? 'Update' : 'Create'} · ${file.path}`} code={file.content} />)}
+        </div>
+      ))}
     </div>
   );
 }
@@ -1508,6 +1544,7 @@ const tabDescriptions: Record<string, string> = {
   'Review & Approve': 'Review why a proposed change was suggested, preview its files, and approve it only when it is correct.',
   'Functional Tests': 'Preview the functional test file that would be created after approval.',
   'Accessibility Tests': 'Preview the accessibility test file that would be created after approval.',
+  'Proposed Files': 'Review every generated or updated file, grouped by its destination folder.',
   'Run Tests': 'Run the approved tests and choose whether to include accessibility tests.',
   'Self-Healing Console': 'See suggested next steps when the most recent test run fails.',
   'AI Insights': 'See the limited information used for optional AI review; raw repository code is not sent to AI.',
