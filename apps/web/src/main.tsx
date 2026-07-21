@@ -60,6 +60,7 @@ type StagedProposal = {
 };
 
 const batchStorageKey = 'playwright-automation-studio.pr-batch';
+const proposalPreviewSelection = '__current_reviewed_proposal__';
 
 const modules = [
   ['Start Here', CircleHelp],
@@ -657,7 +658,13 @@ function App() {
 
   async function runTests() {
     setBusy(true);
-    const plannedFiles = selectedTestFiles.length
+    const runProposalPreview =
+      selectedTestFiles[0] === proposalPreviewSelection || (!index?.tests.length && Boolean(analysis));
+    const plannedFiles = runProposalPreview
+      ? (analysis?.proposedChange.files ?? [])
+          .map((file) => file.path)
+          .filter((file) => /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(file))
+      : selectedTestFiles.length
       ? selectedTestFiles
       : (index?.tests ?? [])
           .map((test: any) => test.filePath)
@@ -668,7 +675,9 @@ function App() {
     setNotice({
       tone: 'info',
       title: 'Running Playwright',
-      message: runAccessibilityWithFunctional
+      message: runProposalPreview
+        ? `Testing the reviewed proposal before approval: ${plannedFiles.join(', ')}. Temporary files are removed after this run.`
+        : runAccessibilityWithFunctional
         ? `Running ${plannedFiles.length} approved test file${plannedFiles.length === 1 ? '' : 's'}: ${plannedFiles.join(', ') || 'discovering test files'}.`
         : `Running functional tests only: ${plannedFiles.join(', ') || 'discovering test files'}.`,
       visibleOn: ['Run Tests'],
@@ -678,7 +687,8 @@ function App() {
         await apiPost('/api/execution/run', {
           installMissingDependencies,
           runAccessibilityWithFunctional,
-          testFiles: selectedTestFiles.length ? selectedTestFiles : undefined,
+          testFiles: !runProposalPreview && selectedTestFiles.length ? selectedTestFiles : undefined,
+          proposedFiles: runProposalPreview ? analysis?.proposedChange.files : undefined,
         }),
       );
       setNotice({
@@ -741,9 +751,11 @@ function App() {
             )}
             {active === 'Run Tests' && (
               <>
-                <button onClick={runTests} disabled={busy || !index?.tests.length}>
+                <button onClick={runTests} disabled={busy || (!index?.tests.length && !analysis)}>
                   <Play size={16} />
-                  {selectedTestFiles.length
+                  {selectedTestFiles[0] === proposalPreviewSelection || (!index?.tests.length && analysis)
+                    ? 'Test proposal before approval'
+                    : selectedTestFiles.length
                     ? `Run selected (${selectedTestFiles.length})`
                     : 'Run tests'}
                 </button>
@@ -860,6 +872,7 @@ function App() {
               }
               selectedTestFiles={selectedTestFiles}
               setSelectedTestFiles={setSelectedTestFiles}
+              hasProposalPreview={Boolean(analysis?.proposedChange.files.length)}
             />
           )}
           {active === 'AI Insights' && <AiInsights analysis={analysis} />}
@@ -1791,11 +1804,13 @@ function Execution({
   availableTests,
   selectedTestFiles,
   setSelectedTestFiles,
+  hasProposalPreview,
 }: {
   execution: any;
   availableTests: Array<{ name: string; filePath: string; hasAccessibilityCoverage: boolean }>;
   selectedTestFiles: string[];
   setSelectedTestFiles: React.Dispatch<React.SetStateAction<string[]>>;
+  hasProposalPreview: boolean;
 }) {
   const hasTests = availableTests.length > 0;
   const installSummary = execution?.result.installActions?.length
@@ -1809,10 +1824,10 @@ function Execution({
       <div className="panel wide">
         <h2>Choose a test to run</h2>
         <p className="helper-text">
-          These test files are from the currently checked-out branch. Choose one file to run only
-          that test, or use the default suite selected by the accessibility option above.
+          Run an approved file from the current branch, or test the current reviewed proposal
+          temporarily before approval. The proposal files are removed after the run.
         </p>
-        {availableTests.length ? (
+        {availableTests.length || hasProposalPreview ? (
           <label className="test-selector">
             <span>Test file</span>
             <select
@@ -1822,6 +1837,11 @@ function Execution({
               }
             >
               <option value="">Default test suite</option>
+              {hasProposalPreview && (
+                <option value={proposalPreviewSelection}>
+                  Current reviewed proposal — test before approval
+                </option>
+              )}
               {availableTests.map((test) => (
                 <option key={test.filePath} value={test.filePath}>
                   {test.name} — {test.hasAccessibilityCoverage ? 'accessibility' : 'functional'}
@@ -1830,12 +1850,14 @@ function Execution({
             </select>
           </label>
         ) : (
-          <div className="empty">No approved test files are available on this branch yet.</div>
+          <div className="empty">
+            No approved tests or reviewed proposal are available yet. Analyze a script first.
+          </div>
         )}
       </div>
       <div className="panel wide">
         <h2>Run Result</h2>
-        {!execution && !hasTests && (
+        {!execution && !hasTests && !hasProposalPreview && (
           <div className="empty">
             No approved tests are available yet. Create a script, analyze it, review the proposal,
             and approve the generated files before running tests.

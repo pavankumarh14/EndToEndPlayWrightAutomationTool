@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -36,13 +37,90 @@ export interface ExecutionResult {
   };
 }
 
+export interface ProposedTestFile {
+  path: string;
+  content: string;
+}
+
 export class ExecutionService {
   constructor(private readonly cwd: string) {}
 
   async runPlaywright(options: PlaywrightRunOptions = {}): Promise<ExecutionResult> {
     const testFiles = await selectedTestFiles(this.cwd, options);
-    const command = playwrightCommand(options);
-    let result = await this.executePlaywright(options);
+    return this.runTestFiles(testFiles, options);
+  }
+
+  /** Runs an uploaded Codegen script without adding it to the repository. */
+  async runUploadedScript(
+    source: string,
+    fileName = 'uploaded.spec.ts',
+    options: PlaywrightRunOptions = {},
+  ): Promise<ExecutionResult> {
+    if (!source.trim()) throw new Error('An uploaded script is required to run a preview.');
+    const extension = path.extname(fileName).match(/^\.(?:ts|tsx|js|jsx)$/i)?.[0] ?? '.ts';
+    const relativePath = `storage/runs/upload-preview-${randomUUID()}.spec${extension}`;
+    const absolutePath = path.join(this.cwd, relativePath);
+    await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+    await fs.writeFile(absolutePath, source, 'utf8');
+    try {
+      return await this.runTestFiles([relativePath], options);
+    } finally {
+      await fs.rm(absolutePath, { force: true });
+    }
+  }
+
+  /**
+   * Tests a reviewed proposal before approval. Proposed files temporarily overlay
+   * matching repository paths and are always restored afterwards.
+   */
+  async runProposedFiles(
+    files: ProposedTestFile[],
+    options: PlaywrightRunOptions = {},
+  ): Promise<ExecutionResult> {
+    if (!files.length) throw new Error('There are no proposed files to test.');
+    const repositoryPrefix = `${this.cwd}${path.sep}`;
+    const originals = new Map<string, string | undefined>();
+    for (const file of files) {
+      const absolute = path.resolve(this.cwd, file.path);
+      if (!absolute.startsWith(repositoryPrefix) || !/^(pages|components|tests)\//.test(file.path)) {
+        throw new Error(`Invalid proposed file path: ${file.path}`);
+      }
+      try {
+        originals.set(file.path, await fs.readFile(absolute, 'utf8'));
+      } catch {
+        originals.set(file.path, undefined);
+      }
+    }
+
+    const testFiles = files
+      .map((file) => file.path)
+      .filter((file) => /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(file))
+      .filter((file) => options.runAccessibilityWithFunctional === true || file.startsWith('tests/functional/'));
+    if (!testFiles.length) throw new Error('The proposal does not include a runnable functional test file.');
+
+    try {
+      for (const file of files) {
+        const absolute = path.resolve(this.cwd, file.path);
+        await fs.mkdir(path.dirname(absolute), { recursive: true });
+        await fs.writeFile(absolute, file.content, 'utf8');
+      }
+      return await this.runTestFiles(testFiles, options);
+    } finally {
+      for (const [filePath, original] of originals) {
+        const absolute = path.resolve(this.cwd, filePath);
+        if (original === undefined) await fs.rm(absolute, { force: true });
+        else await fs.writeFile(absolute, original, 'utf8');
+      }
+    }
+  }
+
+  private async runTestFiles(
+    testFiles: string[],
+    options: PlaywrightRunOptions,
+  ): Promise<ExecutionResult> {
+    const runOptions = { ...options, testFiles };
+    const command = playwrightCommand(runOptions);
+    let result = await this.executePlaywright(runOptions);
     const installActions: ExecutionInstallAction[] = [];
     const maxAttempts = options.maxDependencyInstallAttempts ?? 3;
 
@@ -78,7 +156,7 @@ export class ExecutionService {
         };
       }
 
-      result = await this.executePlaywright(options);
+      result = await this.executePlaywright(runOptions);
       runLogs.push(`Installed missing dependency with: ${installAction.command}`);
       runLogs.push(`Retry output:\n${result.logs}`);
     }

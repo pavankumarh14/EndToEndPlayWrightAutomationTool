@@ -6,14 +6,31 @@ export const executionRouter = Router();
 
 executionRouter.post('/run', async (req, res, next) => {
   try {
-    const result = await new ExecutionService(repositoryRoot).runPlaywright({
+    const service = new ExecutionService(repositoryRoot);
+    const options = {
       filter: typeof req.body?.filter === 'string' ? req.body.filter : undefined,
       testFiles: Array.isArray(req.body?.testFiles)
         ? req.body.testFiles.filter((file: unknown): file is string => typeof file === 'string')
         : undefined,
       installMissingDependencies: req.body?.installMissingDependencies === true,
       runAccessibilityWithFunctional: req.body?.runAccessibilityWithFunctional === true,
-    });
+    };
+    const proposedFiles = Array.isArray(req.body?.proposedFiles)
+      ? req.body.proposedFiles.filter(
+          (file: unknown): file is { path: string; content: string } =>
+            typeof (file as { path?: unknown })?.path === 'string' &&
+            typeof (file as { content?: unknown })?.content === 'string',
+        )
+      : [];
+    const result = proposedFiles.length
+      ? await service.runProposedFiles(proposedFiles, options)
+      : typeof req.body?.source === 'string'
+      ? await service.runUploadedScript(
+          req.body.source,
+          typeof req.body?.fileName === 'string' ? req.body.fileName : 'uploaded.spec.ts',
+          options,
+        )
+      : await service.runPlaywright(options);
     const healing = result.passed
       ? undefined
       : await analyzeFailure(result.logs, result.artifacts.tracesPath);
