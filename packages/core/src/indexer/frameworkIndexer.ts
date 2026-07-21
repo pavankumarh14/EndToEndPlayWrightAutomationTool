@@ -38,10 +38,13 @@ export class FrameworkIndexer {
       }
 
       if (file.startsWith('pages/') || file.startsWith('components/')) {
+        const methodDetails = extractMethodDetails(source);
         pageObjects.push({
           name: path.basename(file, '.ts'),
           filePath: file,
-          methods: extractMethods(source),
+          className: source.match(/export\s+class\s+([A-Za-z_][A-Za-z0-9_]*)/)?.[1],
+          methods: methodDetails.map((method) => method.name),
+          methodDetails,
           locators: extractLocators(source, file)
         });
       }
@@ -109,8 +112,11 @@ async function walk(absolute: string, relative: string, discovered: string[]): P
   }
 }
 
-function extractMethods(source: string): string[] {
-  return [...source.matchAll(/(?:async\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*{/g)]
-    .map((match) => match[1])
-    .filter((name) => !['if', 'for', 'while', 'switch', 'constructor'].includes(name));
+function extractMethodDetails(source: string): Array<{ name: string; parameterCount: number }> {
+  return [...source.matchAll(/(?:async\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*(?::[^ {]+)?\s*{/g)]
+    .filter((match) => !['if', 'for', 'while', 'switch', 'constructor'].includes(match[1]))
+    .map((match) => ({
+      name: match[1],
+      parameterCount: match[2].split(',').map((parameter) => parameter.trim()).filter(Boolean).length
+    }));
 }

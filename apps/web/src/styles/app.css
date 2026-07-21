@@ -46,9 +46,21 @@ button:disabled {
 .brand {
   display: flex;
   gap: 10px;
-  align-items: center;
+  align-items: flex-start;
   font-weight: 750;
   margin: 0 8px 18px;
+}
+
+.brand-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.brand-copy small {
+  color: #aebed1;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 nav {
@@ -405,6 +417,56 @@ h2 {
 .pull-request-link span {
   color: #4c5d73;
   font-size: 13px;
+}
+
+.branch-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0 0 14px;
+  padding: 11px 13px;
+  border: 1px solid #d6e0ec;
+  border-radius: 6px;
+  color: #4c5d73;
+  font-size: 13px;
+}
+
+.branch-status code {
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 58%);
+}
+
+.confirmation-modal {
+  width: min(100%, 520px);
+  padding: 24px;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 22px 60px rgb(15 23 42 / 35%);
+}
+
+.confirmation-modal h2 { margin: 0 0 10px; }
+
+.confirmation-modal p {
+  margin: 0;
+  color: #4c5d73;
+  line-height: 1.55;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
 }
 
 .danger {

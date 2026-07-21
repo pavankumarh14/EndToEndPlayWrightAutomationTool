@@ -1,8 +1,8 @@
-# Enterprise AI-Assisted Playwright Automation Platform
+# Playwright Automation Studio Architecture
 
 ## Mission
 
-The platform converts uploaded Playwright Codegen scripts into maintainable TypeScript automation assets using an AST-first, AI-last pipeline. Git remains the source of truth; generated automation code is written to the repository, never to a database.
+The platform converts uploaded or locally recorded Playwright Codegen scripts into maintainable TypeScript automation assets using an AST-first pipeline with optional focused AI review. Git remains the source of truth; generated automation code is written to the repository, never to a database.
 
 ## Architectural Principles
 
@@ -22,18 +22,20 @@ The platform converts uploaded Playwright Codegen scripts into maintainable Type
 
 | Module | Responsibility |
 | --- | --- |
-| React Console | Uploads scripts, shows indexes, governance, confidence, execution, healing, token analytics, Git review |
-| REST API | Coordinates indexing, deterministic analysis, retrieval, Ollama, quality gates, execution, Git |
+| React Console | Guides creation, review/approval, project-library inspection, test execution, and GitHub pull-request management |
+| REST API | Coordinates Codegen recording, indexing, deterministic analysis, retrieval, optional AI review, quality gates, execution, and GitHub CLI |
 | Framework Indexer | Scans `tests`, `pages`, `components`, `fixtures`, and `utils` |
 | AST Analysis Engine | Extracts locators, methods, tests, assertions, workflows, waits, navigation, and data usage deterministically |
 | Retrieval Engine | Sends only relevant workflow, page object, test, and locator summaries into decision flow |
 | Similarity Engine | Deterministic lexical similarity for reuse and duplicate detection |
+| Reuse Selector | Reuses only compatible page objects with safe no-argument business and verification methods |
 | Governance Engine | Enforces naming, folder, locator, accessibility, and raw-locator rules |
+| Impact Analyzer | Reports proposed created/updated files, related tests, reused assets, and source-level risk before files are written |
 | Confidence Engine | Converts evidence into confidence bands and allowed actions |
-| Ollama Integration | Optional semantic reviewer for narrow decisions only |
+| Semantic Provider Integration | Optional Gemini or Ollama semantic reviewer for narrow decisions only; safe local fallback when unavailable |
 | Quality Gate | Blocks changes that fail confidence, governance, accessibility, duplicate, and architecture rules |
 | Self-Healing Engine | Uses logs and artifacts to propose rule-based, indexed, then AI-scored fixes |
-| Git Service | Shows diff/status and commits approved framework changes |
+| Git Service | Configures GitHub remote, creates/updates draft PRs for approved files, and manages draft PR closure |
 | Framework Learning Engine | Learns from approved decisions, merged outcomes, successful executions, and team patterns |
 
 ## Data Boundaries
@@ -44,7 +46,7 @@ Automation source is stored only in Git-managed files. Runtime indexes and audit
 
 | Score | Band | Allowed Action |
 | --- | --- | --- |
-| 95-100 | Auto | Auto apply, update, refactor, create, or heal with audit trail and diff |
+| 95-100 | High confidence | Generate a proposal for human review; explicit approval is still required |
 | 80-94 | Approval | Generate proposed change and require human approval |
 | 60-79 | Recommendation | Explain options; no code modification |
 | 0-59 | High Risk | Manual review only; automated actions disabled |
@@ -68,4 +70,4 @@ Every adjusted recommendation includes the original score, final score, adjustme
 
 ## Token Optimization Strategy
 
-The indexer estimates full-repository token cost and compares it with retrieved workflow summaries. API calls to Ollama receive only workflow summary, retrieved assets, similarity metrics, and relevant page/test summaries.
+The indexer estimates full-repository token cost and compares it with retrieved workflow summaries. API calls to an optional semantic provider receive only workflow summary, retrieved assets, similarity metrics, and relevant page/test summaries. Raw repository source is not sent. If the provider errors or is quota/rate limited, the system records the warning and proceeds using the closest safe local result.

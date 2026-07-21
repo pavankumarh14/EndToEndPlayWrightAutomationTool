@@ -1,6 +1,9 @@
 import { WorkflowModel } from '../types/domain.js';
+import { ReusablePageObject } from '../reuse/pageObjectReuse.js';
 
 export function generatePageObject(workflow: WorkflowModel, pageName = toPascal(workflow.name) + 'Page'): string {
+  const businessMethod = toCamel(workflow.name);
+  const verificationMethod = `verify${toPascal(workflow.name)}`;
   const locatedActions = workflow.actions.filter((action) => action.locator);
   const locatorLines = locatedActions
     .map((action, index) => {
@@ -22,11 +25,11 @@ export class ${pageName} {
 
 ${locatorLines || '  // Add accessible locators here after approval.'}
 
-  async performWorkflow(): Promise<void> {
+  async ${businessMethod}(): Promise<void> {
 ${[...navigationLines, ...actionLines].join('\n') || '    // No recorded actions were found.'}
   }
 
-  async verifyWorkflow(): Promise<void> {
+  async ${verificationMethod}(): Promise<void> {
 ${workflow.assertions.length ? workflow.assertions.map((assertion) => `    await expect(${toPageReference(assertion.target)}).${assertion.kind}(${assertion.expected});`).join('\n') : '    await expect(this.page).toHaveURL(/.*/);'}
   }
 }
@@ -35,13 +38,30 @@ ${workflow.assertions.length ? workflow.assertions.map((assertion) => `    await
 
 export function generateFunctionalTest(workflow: WorkflowModel, pageClassName: string): string {
   const fixtureName = pageClassName.charAt(0).toLowerCase() + pageClassName.slice(1);
+  const businessMethod = toCamel(workflow.name);
+  const verificationMethod = `verify${toPascal(workflow.name)}`;
   return `import { test } from '@playwright/test';
 import { ${pageClassName} } from '../../pages/${pageClassName}';
 
 test('${workflow.name}', async ({ page }) => {
   const ${fixtureName} = new ${pageClassName}(page);
-  await ${fixtureName}.performWorkflow();
-  await ${fixtureName}.verifyWorkflow();
+  await ${fixtureName}.${businessMethod}();
+  await ${fixtureName}.${verificationMethod}();
+});
+`;
+}
+
+export function generateReusedFunctionalTest(workflow: WorkflowModel, reusable: ReusablePageObject): string {
+  const className = reusable.pageObject.className!;
+  const fixtureName = className.charAt(0).toLowerCase() + className.slice(1);
+  const importPath = `../../${reusable.pageObject.filePath.replace(/\.tsx?$/, '')}`;
+  return `import { test } from '@playwright/test';
+import { ${className} } from '${importPath}';
+
+test('${workflow.name}', async ({ page }) => {
+  const ${fixtureName} = new ${className}(page);
+  await ${fixtureName}.${reusable.businessMethod}();
+  await ${fixtureName}.${reusable.verificationMethod}();
 });
 `;
 }
@@ -68,6 +88,11 @@ function toPascal(value: string): string {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('');
   return pascal || 'Generated';
+}
+
+function toCamel(value: string): string {
+  const pascal = toPascal(value);
+  return pascal.charAt(0).toLowerCase() + pascal.slice(1);
 }
 
 function toPageReference(target: string): string {

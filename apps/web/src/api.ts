@@ -64,6 +64,7 @@ export interface CreatedPullRequest {
   baseBranch: string;
   commit: string;
   updated: boolean;
+  returnedToDefaultBranch: boolean;
 }
 
 export interface ClosedPullRequest {
@@ -111,7 +112,23 @@ export interface AnalysisResponse {
     };
   };
   governance: { passed: boolean; violations: Array<{ severity: string; rule: string; message: string; filePath?: string }> };
+  impact: {
+    risk: 'low' | 'medium' | 'high';
+    createdFiles: string[];
+    updatedFiles: string[];
+    affectedTests: string[];
+    affectedPageObjects: string[];
+    reusedAssets: string[];
+    summary: string;
+    limitation: string;
+  };
   quality: { passed: boolean; checks: Array<{ name: string; passed: boolean; details: string }> };
+  semanticReview?: {
+    provider: 'none' | 'ollama' | 'gemini';
+    model?: string;
+    status: 'used' | 'fallback' | 'not-enabled';
+    message?: string;
+  };
   retrieval: { tokenEstimate: number; workflows: unknown[]; pageObjects: unknown[]; tests: unknown[]; evidence: string[] };
   proposedChange: { kind: string; files: Array<{ path: string; content: string; action: string }>; auditSummary: string };
 }

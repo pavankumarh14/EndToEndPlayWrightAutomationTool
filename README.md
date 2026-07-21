@@ -1,6 +1,6 @@
-# Enterprise AI Playwright Platform
+# Playwright Automation Studio
 
-Enterprise AI Playwright Platform is a TypeScript monorepo for turning uploaded Playwright Codegen scripts into maintainable automation assets. It uses deterministic AST analysis, framework indexing, governance checks, confidence scoring, optional Ollama semantic review, and explicit human approval before writing generated files back to the repository.
+Playwright Automation Studio is a TypeScript monorepo for turning Playwright scripts into maintainable automation assets. Create a script by pasting/uploading it or recording it locally with Playwright Codegen. The studio is AST-first: it uses deterministic **Abstract Syntax Tree (AST)** analysis, framework indexing, governance checks, reuse detection, impact analysis, and confidence scoring. Optional AI provides only a narrow semantic review when it helps; it does not replace local checks or human approval.
 
 The repository is designed around one core rule: Git is the source of truth. Generated page objects, tests, accessibility specs, indexes, and learning data are all visible in the working tree.
 
@@ -11,9 +11,11 @@ The repository is designed around one core rule: Git is the source of truth. Gen
 - Retrieves similar workflows and reusable page objects before proposing new files.
 - Applies governance rules for naming, folder placement, locator strategy, accessibility coverage, and raw-locator usage.
 - Scores recommendations with confidence bands so risky changes require review.
-- Optionally calls Ollama for narrow semantic decisions without sending raw repository code.
+- Reuses a compatible existing page object when it has safe business and verification methods, rather than creating a duplicate.
+- Shows the proposed change scope: files to create/update, related tests, and reused assets.
+- Optionally calls a configured AI provider (Gemini or Ollama today) for a narrow semantic decision without sending raw repository code. If it is unavailable or rate-limited, analysis continues with the closest safe local AST/index result and explains the fallback.
 - Records approved feedback and outcomes under `storage/learning` to adapt future recommendations.
-- Provides a React console and REST API for upload analysis, approval, execution, self-healing proposals, learning dashboards, Git review, and token analytics.
+- Provides a React console and REST API for recording, analysis, approval, execution, failure guidance, learning data, and GitHub pull requests.
 
 ## Repository Layout
 
@@ -41,7 +43,7 @@ docs/                  Architecture, low-level design, and flow diagrams
 - Node.js 20 or later
 - npm
 - Playwright browsers, installed with `npx playwright install`
-- Optional: Ollama running locally if semantic scoring is enabled
+- Optional: Gemini API key or Ollama running locally if semantic scoring is enabled
 
 ## Setup
 
@@ -71,30 +73,24 @@ The web app reads `VITE_API_URL` and falls back to `http://localhost:4000`.
 
 The React UI is the main control surface for the platform. It runs at `http://localhost:5173` during local development and connects to the API at `http://localhost:4000` unless `VITE_API_URL` is set.
 
-The sidebar organizes the workflow into these areas:
+The sidebar keeps the main workflow to these areas:
 
 | Area | Purpose |
 | --- | --- |
-| Upload Center | Paste or upload a Playwright Codegen script and start analysis |
-| Codegen Recording | Enter a URL in Upload Center to launch a local browser and Playwright Inspector, edit the recorded script, then save and upload it for analysis |
-| Framework Explorer | Review indexed tests, workflows, page objects, locators, and accessibility assets |
-| Index Dashboard | Inspect index generation time, indexed file counts, and repository scan output |
-| Governance Dashboard | Review naming, folder, locator, accessibility, duplicate, and architecture findings |
-| Confidence Dashboard | Review confidence score, evidence, retrieval results, and learning influence |
-| Functional Tests | Preview generated functional test files from the latest analysis |
-| Accessibility Tests | Preview generated accessibility specs from the latest analysis |
-| Execution Center | Run Playwright tests and inspect execution results |
-| Self-Healing Console | Review proposed fixes when execution fails |
-| AI Insights | Inspect optional semantic review output when Ollama is enabled |
-| Learning Dashboard | View accepted/rejected patterns, team standards, and confidence trends |
-| Token Analytics | Compare estimated repository token cost before and after retrieval |
-| Git & Pull Request | Check GitHub readiness, review local changes, and see the draft pull request created after approval |
+| Start Here | See the four-step workflow and choose the next action |
+| Create Test | Paste/upload a Playwright script or record a new one from a URL |
+| Review & Approve | Review generated files, governance, confidence, reuse, and impact before approval |
+| Project Library | Review indexed tests, workflows, page objects, locators, and accessibility assets |
+| Run Tests | Run functional/accessibility tests and review the result |
+| Git & Pull Requests | Configure GitHub and open or manage the draft pull request created after approval |
+
+Technical diagnostics such as the index, governance detail, generated-file previews, AI review detail, learning history, token analytics, and failure guidance remain available from the relevant workflow actions or existing direct links, but are intentionally not primary navigation items.
 
 The top action bar exposes the primary actions:
 
 - `Analyze` sends the current upload to `/api/analysis/upload`.
 - `Run` starts Playwright execution through `/api/execution/run`.
-- `Approve` writes the latest approved proposal to the repository, commits only its generated files on a new `automation/...` branch, pushes it, and creates a draft GitHub pull request.
+- `Approve files` writes only the reviewed proposal to the repository. When GitHub is configured, it commits those approved files on an `automation/...` branch, pushes it, creates or updates a draft pull request, and returns the local checkout to the default branch.
 
 To create pull requests, install and authenticate GitHub CLI on the machine running the API:
 
@@ -102,7 +98,7 @@ To create pull requests, install and authenticate GitHub CLI on the machine runn
 gh auth login
 ```
 
-The Git & Pull Request tab lets users configure the GitHub repository URL, displays diagnostics, and starts GitHub CLI's secure browser sign-in. It deliberately does not accept or store GitHub keys; GitHub CLI stores credentials securely. The project must be on its default branch so the platform can create an isolated branch and avoid committing unrelated worktree files.
+The Git & Pull Requests tab lets users configure the GitHub repository URL, displays diagnostics, and starts GitHub CLI's secure browser sign-in. Saving a repository URL only updates the local Git `origin` remote—it does not upload, commit, or create a pull request. The app deliberately does not accept or store GitHub keys; GitHub CLI stores credentials securely. The project must be on its default branch so the platform can create an isolated branch and avoid committing unrelated worktree files. Later approvals update the same open draft PR when applicable. Open the draft PR in GitHub to mark it ready for review, request reviewers, merge it, or close it; the app can also close a draft PR and optionally delete its remote branch.
 
 On first load, the Upload Center shows a sample Playwright login script and two intake paths:
 
@@ -118,9 +114,20 @@ Codegen launches on the same desktop machine as the API. The generated script is
 | `PORT` | `4000` | API server port |
 | `REPOSITORY_ROOT` | repo root inferred from API workspace | Repository to scan and modify |
 | `VITE_API_URL` | `http://localhost:4000` | API base URL used by the React app |
-| `OLLAMA_ENABLED` | `false` | Enables optional semantic review when set to `true` |
+| `AI_PROVIDER` | inferred | `gemini`, `ollama`, or `none`; selects optional semantic review |
+| `GEMINI_API_KEY` | none | Gemini key, used only by the API server and never exposed to the browser |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model used for semantic decisions |
+| `OLLAMA_ENABLED` | `false` | Enables Ollama when `AI_PROVIDER` is not set |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL |
 | `OLLAMA_MODEL` | `llama3.1` | Ollama model used for semantic decisions |
+
+Example with Gemini enabled:
+
+```bash
+cp .env.example .env
+# Edit .env and replace GEMINI_API_KEY with your real key.
+npm run dev
+```
 
 Example with Ollama enabled:
 
@@ -128,9 +135,19 @@ Example with Ollama enabled:
 OLLAMA_ENABLED=true OLLAMA_MODEL=llama3.1 npm run dev
 ```
 
-## Ollama LLM Configuration
+## Gemini and Ollama Configuration
 
-Ollama is configured in `packages/core/src/types/config.ts` and used by the upload analysis route in `apps/api/src/routes/analysis.ts`.
+Gemini and Ollama are configured in `packages/core/src/types/config.ts` and used only by the upload analysis route in `apps/api/src/routes/analysis.ts`.
+
+To use Gemini, create `.env` from `.env.example` and set:
+
+```bash
+AI_PROVIDER=gemini
+GEMINI_API_KEY=your-key-here
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+`.env` is ignored by Git. The Gemini key stays on the API machine; it is never returned to the web app, saved in project storage, or committed. Gemini receives the workflow summary, selected local framework metadata, and similarity evidence used for a narrow semantic score—not the raw repository.
 
 By default, Ollama is disabled:
 
@@ -173,11 +190,11 @@ npm run index        # Build and persist the framework index
 1. Start the app with `npm run dev`.
 2. Open the web console at `http://localhost:5173`.
 3. Paste or upload a Playwright Codegen script in the Upload Center.
-4. Review parsed workflow details, retrieved assets, governance results, confidence score, and proposed files.
-5. Approve the generated change when the recommendation is acceptable.
-6. The API writes approved files into `pages/`, `tests/functional/`, and `tests/accessibility/`, then rebuilds `storage/indexes/framework-index.json`.
-7. Run tests from the Execution Center or with `npm run test:e2e`.
-8. Review Git status and commit approved changes through the Git review flow or your normal Git workflow.
+4. Review the proposal: project rules, change scope, reusable assets, confidence, and optional AI/context information.
+5. Approve the generated change only when it is acceptable.
+6. The API writes only approved files into `pages/`, `tests/functional/`, and `tests/accessibility/`, then rebuilds `storage/indexes/framework-index.json`.
+7. If GitHub is configured, approval creates or updates a draft pull request containing only those approved files.
+8. Run approved tests from **Run Tests** or with `npm run test:e2e`.
 
 ## REST API
 
@@ -189,14 +206,19 @@ The API is registered under `/api`.
 | `POST` | `/api/analysis/upload` | Analyze an uploaded or JSON-submitted Playwright script |
 | `POST` | `/api/analysis/feedback` | Record accepted, rejected, or modified feedback |
 | `POST` | `/api/analysis/apply` | Apply approved proposed files and rebuild the index |
-| `GET` | `/api/index` | Load or build the framework index |
+| `GET` | `/api/index` | Build and return the current framework index |
 | `POST` | `/api/index/rebuild` | Force a deterministic re-index |
 | `GET` | `/api/governance/report` | Return repository governance findings |
 | `POST` | `/api/execution/run` | Run Playwright and return a self-healing proposal on failure |
+| `POST` | `/api/recording/sessions` | Start a local Playwright Codegen session from a URL |
+| `GET` | `/api/recording/sessions/:id` | Read Codegen recording status and generated source |
+| `POST` | `/api/recording/sessions/:id/stop` | Stop the local Codegen session |
+| `POST` | `/api/recording/sessions/:id/save` | Stage generated Codegen source for editing and upload |
 | `GET` | `/api/git/status` | Return Git status and diff information |
 | `POST` | `/api/git/commit` | Commit approved working-tree changes |
 | `GET` | `/api/git/pull-request-readiness` | Check GitHub CLI, authentication, remote, and branch prerequisites |
 | `POST` | `/api/git/remote` | Add or update the GitHub `origin` remote from an approved repository URL |
+| `POST` | `/api/git/auth/login` | Start secure GitHub CLI browser sign-in |
 | `POST` | `/api/git/pull-request` | Create a draft PR from explicitly approved generated files |
 | `POST` | `/api/git/pull-request/close` | Close a draft PR, with an optional confirmed remote-branch deletion |
 | `GET` | `/api/learning/profile` | Return the current team automation profile |
@@ -213,22 +235,26 @@ curl -X POST http://localhost:4000/api/analysis/upload \
 
 ## Governance Rules
 
-- Page objects use `LoginPage.ts` style names under `pages/`.
-- Components use `HeaderComponent.ts` style names under `components/`.
+- Page objects use `<Workflow>Page.ts` names under `pages/`.
+- Components use `<Name>Component.ts` names under `components/`.
 - Functional specs live under `tests/functional`.
 - Accessibility specs live under `tests/accessibility`.
 - Functional tests should call page-object workflows instead of using raw Playwright locators directly.
 - Locator preference order is role, label, placeholder, text, test id, CSS, then XPath.
 - XPath, dynamic selectors, index selectors, duplicate locators, and ignored reusable assets are flagged.
 
-## Confidence Bands
+## Project Rules and Confidence
+
+Project rules are local guardrails, not AI instructions and not a guarantee that the live application works. They check generated file location and naming, keep raw Playwright locators out of functional tests, and flag risky locator patterns. The separate change-scope section shows which repository files the proposal will create, update, or reuse. Running the approved test is still required to validate runtime behavior.
+
+Confidence is a review recommendation, not permission to change files automatically. The UI requires explicit human approval for every write.
 
 | Score | Band | Behavior |
 | --- | --- | --- |
-| `95-100` | Auto | Safe for automatic application with audit trail |
-| `80-94` | Approval | Proposed change requires human approval |
-| `60-79` | Recommendation | Explain options without modifying code |
-| `0-59` | High Risk | Manual review only |
+| `95-100` | High confidence | Review then approve if correct |
+| `80-94` | Review recommended | Review the generated files and scope before approval |
+| `60-79` | Caution | Investigate the proposal before approval |
+| `0-59` | High risk | Do not approve without manual investigation |
 
 ## Generated Data
 

@@ -29,6 +29,7 @@ export interface CreatedPullRequest {
   baseBranch: string;
   commit: string;
   updated: boolean;
+  returnedToDefaultBranch: boolean;
 }
 
 export interface ClosedPullRequest {
@@ -68,7 +69,7 @@ export class GitService {
     if (ghVersion && !authenticated) blockers.push('GitHub CLI is not authenticated. Run gh auth login.');
     if (authenticated && !baseBranch) blockers.push('Could not identify the repository default branch through GitHub CLI.');
     if (branch && baseBranch && branch !== baseBranch && !existingPullRequest) {
-      blockers.push(`Switch to the default branch (${baseBranch}) before approving so the platform can create an isolated pull-request branch.`);
+      blockers.push(`Current branch is ${branch}, but the repository default branch is ${baseBranch}. Switch to ${baseBranch} before approving so the platform can create a new isolated pull-request branch. If this is an existing automation pull request, click Check setup again so the platform can find it.`);
     }
 
     return {
@@ -142,7 +143,8 @@ export class GitService {
         branch: readiness.existingPullRequest.branch,
         baseBranch: readiness.baseBranch,
         commit: commit.trim(),
-        updated: true
+        updated: true,
+        returnedToDefaultBranch: await this.returnToDefaultBranch(readiness.baseBranch)
       };
     }
 
@@ -167,7 +169,14 @@ export class GitService {
     ]);
     const url = output.match(/https:\/\/github\.com\/[^\s]+\/pull\/\d+/)?.[0];
     if (!url) throw new Error(`GitHub did not return a pull request URL: ${output}`);
-    return { url, branch, baseBranch: readiness.baseBranch, commit: commit.trim(), updated: false };
+    return {
+      url,
+      branch,
+      baseBranch: readiness.baseBranch,
+      commit: commit.trim(),
+      updated: false,
+      returnedToDefaultBranch: await this.returnToDefaultBranch(readiness.baseBranch)
+    };
   }
 
   async closePullRequest(input: { url: string; branch: string; deleteRemoteBranch: boolean }): Promise<ClosedPullRequest> {
@@ -227,6 +236,15 @@ export class GitService {
       return { url: pullRequest.url, branch, isDraft: pullRequest.isDraft === true };
     } catch {
       return undefined;
+    }
+  }
+
+  private async returnToDefaultBranch(branch: string): Promise<boolean> {
+    try {
+      await this.run(['checkout', branch]);
+      return true;
+    } catch {
+      return false;
     }
   }
 }

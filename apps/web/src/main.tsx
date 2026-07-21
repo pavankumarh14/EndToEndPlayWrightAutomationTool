@@ -1,18 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Accessibility,
-  Activity,
   ArrowLeft,
-  Bot,
-  BrainCircuit,
   CheckCircle2,
   CircleHelp,
-  Code2,
   FileSearch,
   Gauge,
   GitBranch,
-  GraduationCap,
   Play,
   ShieldCheck,
   Upload
@@ -58,23 +52,31 @@ type Notice = {
 };
 
 const modules = [
-  ['Getting Started', CircleHelp],
-  ['Upload Center', Upload],
-  ['Framework Explorer', FileSearch],
-  ['Index Dashboard', Activity],
-  ['Governance Dashboard', ShieldCheck],
-  ['Confidence Dashboard', Gauge],
-  ['Functional Tests', Code2],
-  ['Accessibility Tests', Accessibility],
-  ['Execution Center', Play],
-  ['Self-Healing Console', BrainCircuit],
-  ['AI Insights', Bot],
-  ['Learning Dashboard', GraduationCap],
-  ['Token Analytics', Activity],
-  ['Git & Pull Request', GitBranch]
+  ['Start Here', CircleHelp],
+  ['Create Test', Upload],
+  ['Review & Approve', Gauge],
+  ['Project Library', FileSearch],
+  ['Run Tests', Play],
+  ['Git & Pull Requests', GitBranch]
 ] as const;
 
 const pageRoutes = new Map(modules.map(([label]) => [slugify(label), label]));
+const legacyPageRoutes: Record<string, string> = {
+  'getting-started': 'Start Here',
+  'upload-center': 'Create Test',
+  'confidence-dashboard': 'Review & Approve',
+  'framework-explorer': 'Project Library',
+  'execution-center': 'Run Tests',
+  'git-pull-request': 'Git & Pull Requests',
+  'index-dashboard': 'Index Dashboard',
+  'governance-dashboard': 'Governance Dashboard',
+  'functional-tests': 'Functional Tests',
+  'accessibility-tests': 'Accessibility Tests',
+  'self-healing-console': 'Run Tests',
+  'ai-insights': 'AI Insights',
+  'learning-dashboard': 'Learning Dashboard',
+  'token-analytics': 'Token Analytics'
+};
 
 function App() {
   const [active, setActive] = useState(() => pageFromHash());
@@ -91,6 +93,7 @@ function App() {
   const [pullRequestReadiness, setPullRequestReadiness] = useState<PullRequestReadiness | undefined>();
   const [pullRequest, setPullRequest] = useState<CreatedPullRequest | undefined>();
   const [closedPullRequest, setClosedPullRequest] = useState<ClosedPullRequest | undefined>();
+  const [closeConfirmation, setCloseConfirmation] = useState<boolean | undefined>();
   const [gitRemote, setGitRemoteUrl] = useState('');
   const [githubLoginPending, setGithubLoginPending] = useState(false);
   const [learning, setLearning] = useState<LearningDashboardResponse | undefined>();
@@ -102,7 +105,7 @@ function App() {
     tone: 'info',
     title: 'Choose how to create your script',
     message: 'Upload or paste an existing Playwright script, or enter a URL to record one automatically. When the script is ready, click Analyze to generate a reviewed proposal.',
-    visibleOn: ['Upload Center']
+    visibleOn: ['Create Test']
   });
 
   useEffect(() => {
@@ -154,7 +157,7 @@ function App() {
             tone: 'success',
             title: 'GitHub sign-in complete',
             message: 'GitHub CLI is authenticated. You can now confirm the repository URL and continue with pull-request setup.',
-            visibleOn: ['Git & Pull Request']
+            visibleOn: ['Git & Pull Requests']
           });
         }
       } catch {
@@ -201,14 +204,14 @@ function App() {
       setNotice({
         tone: 'success',
         title: 'GitHub repository configured',
-        message: 'The repository remote was saved. Complete any remaining GitHub setup steps shown in Git & Pull Request.',
-        visibleOn: ['Git & Pull Request']
+        message: 'The repository remote was saved. Complete any remaining GitHub setup steps shown in Git & Pull Requests.',
+        visibleOn: ['Git & Pull Requests']
       });
       await refreshGit();
     } catch (err) {
       const message = String(err);
       setError(message);
-      setNotice({ tone: 'error', title: 'Could not save repository URL', message, visibleOn: ['Git & Pull Request'] });
+      setNotice({ tone: 'error', title: 'Could not save repository URL', message, visibleOn: ['Git & Pull Requests'] });
     } finally {
       setBusy(false);
     }
@@ -220,14 +223,14 @@ function App() {
     try {
       const result = await startGitHubLogin();
       setGithubLoginPending(true);
-      setNotice({ tone: 'info', title: 'Complete GitHub sign-in', message: result.message, visibleOn: ['Git & Pull Request'] });
+      setNotice({ tone: 'info', title: 'Complete GitHub sign-in', message: result.message, visibleOn: ['Git & Pull Requests'] });
     } catch (err) {
       const rawMessage = String(err);
       const message = rawMessage.includes('Cannot POST /api/git/auth/login')
         ? 'Your API server is running an older version. Stop the current dev server, run npm run dev again, then retry GitHub sign-in.'
         : rawMessage;
       setError(message);
-      setNotice({ tone: 'error', title: 'GitHub sign-in could not start', message, visibleOn: ['Git & Pull Request'] });
+      setNotice({ tone: 'error', title: 'GitHub sign-in could not start', message, visibleOn: ['Git & Pull Requests'] });
     } finally {
       setBusy(false);
     }
@@ -239,13 +242,11 @@ function App() {
           ...pullRequestReadiness.existingPullRequest,
           baseBranch: pullRequestReadiness.baseBranch ?? '',
           commit: '',
-          updated: true
+          updated: true,
+          returnedToDefaultBranch: false
         }
       : undefined);
     if (!currentPullRequest) return;
-    if (deleteRemoteBranch && !window.confirm('Close this pull request and permanently delete its remote automation branch? Your local branch and files will be kept.')) {
-      return;
-    }
     setBusy(true);
     setError(undefined);
     try {
@@ -262,16 +263,20 @@ function App() {
         message: deleteRemoteBranch
           ? 'The draft pull request was closed and its remote automation branch was deleted. Your local branch and files were kept.'
           : 'The draft pull request was closed. Its branch and files were kept, so you can reopen or reuse them later.',
-        visibleOn: ['Git & Pull Request']
+        visibleOn: ['Git & Pull Requests']
       });
       await refreshGit();
     } catch (err) {
       const message = String(err);
       setError(message);
-      setNotice({ tone: 'error', title: 'Could not close pull request', message, visibleOn: ['Git & Pull Request'] });
+      setNotice({ tone: 'error', title: 'Could not close pull request', message, visibleOn: ['Git & Pull Requests'] });
     } finally {
       setBusy(false);
     }
+  }
+
+  function requestClosePullRequest(deleteRemoteBranch: boolean) {
+    setCloseConfirmation(deleteRemoteBranch);
   }
 
   async function analyze() {
@@ -281,7 +286,7 @@ function App() {
       tone: 'info',
       title: 'Analyzing upload',
       message: 'The API is parsing the script, searching the framework index, checking governance, and scoring confidence.',
-      visibleOn: ['Upload Center', 'Confidence Dashboard']
+      visibleOn: ['Create Test', 'Review & Approve']
     });
     try {
       const result = await uploadScript(source);
@@ -291,13 +296,13 @@ function App() {
         tone: 'success',
         title: 'Analysis complete',
         message: 'Review the confidence evidence, preview generated files, then approve only if the proposal is acceptable.',
-        visibleOn: ['Confidence Dashboard', 'Functional Tests', 'Accessibility Tests', 'AI Insights']
+        visibleOn: ['Review & Approve', 'Functional Tests', 'Accessibility Tests', 'AI Insights']
       });
-      navigate('Confidence Dashboard');
+      navigate('Review & Approve');
     } catch (err) {
       const message = String(err);
       setError(message);
-      setNotice({ tone: 'error', title: 'Analysis failed', message, visibleOn: ['Upload Center', 'Confidence Dashboard'] });
+      setNotice({ tone: 'error', title: 'Analysis failed', message, visibleOn: ['Create Test', 'Review & Approve'] });
     } finally {
       setBusy(false);
     }
@@ -315,12 +320,12 @@ function App() {
         tone: 'info',
         title: 'Codegen recording started',
         message: 'The Playwright browser and Inspector opened locally. Perform your steps there; generated code will appear below.',
-        visibleOn: ['Upload Center']
+        visibleOn: ['Create Test']
       });
     } catch (err) {
       const message = String(err);
       setError(message);
-      setNotice({ tone: 'error', title: 'Could not start Codegen', message, visibleOn: ['Upload Center'] });
+      setNotice({ tone: 'error', title: 'Could not start Codegen', message, visibleOn: ['Create Test'] });
     } finally {
       setBusy(false);
     }
@@ -337,7 +342,7 @@ function App() {
         tone: 'success',
         title: 'Recording stopped',
         message: 'Review or edit the captured script, then save and upload it for analysis.',
-        visibleOn: ['Upload Center']
+        visibleOn: ['Create Test']
       });
     } catch (err) {
       setError(String(err));
@@ -361,13 +366,13 @@ function App() {
         tone: 'success',
         title: 'Recording saved and analyzed',
         message: 'Review the generated framework proposal and approve it only when it is correct.',
-        visibleOn: ['Confidence Dashboard']
+        visibleOn: ['Review & Approve']
       });
-      navigate('Confidence Dashboard');
+      navigate('Review & Approve');
     } catch (err) {
       const message = String(err);
       setError(message);
-      setNotice({ tone: 'error', title: 'Save and upload failed', message, visibleOn: ['Upload Center'] });
+      setNotice({ tone: 'error', title: 'Save and upload failed', message, visibleOn: ['Create Test'] });
     } finally {
       setBusy(false);
     }
@@ -380,7 +385,7 @@ function App() {
       tone: 'info',
       title: 'Applying approved proposal',
       message: 'Generated files are being written to the repository and the framework index is being rebuilt.',
-      visibleOn: ['Confidence Dashboard', 'Git & Pull Request']
+      visibleOn: ['Review & Approve', 'Git & Pull Requests']
     });
     let filesApplied = false;
     try {
@@ -403,11 +408,11 @@ function App() {
         tone: 'success',
         title: createdPullRequest.updated ? 'Draft pull request updated' : 'Draft pull request created',
         message: createdPullRequest.updated
-          ? `The approved files were committed and pushed to the existing draft pull request on ${createdPullRequest.branch}.`
-          : `The approved files were committed and a draft GitHub pull request was created on ${createdPullRequest.branch}.`,
-        visibleOn: ['Git & Pull Request']
+          ? `The approved files were committed and pushed to the existing draft pull request on ${createdPullRequest.branch}.${createdPullRequest.returnedToDefaultBranch ? ` This computer is back on ${createdPullRequest.baseBranch}.` : ` The pull request is ready, but Git could not switch this computer back to ${createdPullRequest.baseBranch}; switch branches manually when ready.`}`
+          : `The approved files were committed and a draft GitHub pull request was created on ${createdPullRequest.branch}.${createdPullRequest.returnedToDefaultBranch ? ` This computer is back on ${createdPullRequest.baseBranch}.` : ` The pull request is ready, but Git could not switch this computer back to ${createdPullRequest.baseBranch}; switch branches manually when ready.`}`,
+        visibleOn: ['Git & Pull Requests']
       });
-      navigate('Git & Pull Request');
+      navigate('Git & Pull Requests');
     } catch (err) {
       const message = String(err);
       setError(message);
@@ -415,11 +420,11 @@ function App() {
         tone: 'error',
         title: filesApplied ? 'Files applied, but PR creation failed' : 'Approval could not start',
         message: filesApplied ? `The approved files are in the working tree, but no pull request was created. ${message}` : message,
-        visibleOn: ['Confidence Dashboard', 'Git & Pull Request']
+        visibleOn: ['Review & Approve', 'Git & Pull Requests']
       });
       if (filesApplied) {
         await refreshGit();
-        navigate('Git & Pull Request');
+        navigate('Git & Pull Requests');
       }
     } finally {
       setBusy(false);
@@ -444,10 +449,10 @@ function App() {
       setNotice({
         tone: 'info',
         title: 'Modify feedback recorded',
-        message: 'You are back in Upload Center. Edit the script and click Analyze again to create a new proposal.',
-        visibleOn: ['Upload Center']
+        message: 'You are back in Create Test. Edit the script and click Analyze again to create a new proposal.',
+        visibleOn: ['Create Test']
       });
-      navigate('Upload Center');
+      navigate('Create Test');
       return;
     }
     setNotice({
@@ -457,7 +462,7 @@ function App() {
         action === 'accepted'
           ? 'The decision was recorded for learning. Use Approve when you are ready to write files to the repository.'
           : 'The rejection was recorded for learning. No files were written; edit the upload or analyze a different script.',
-      visibleOn: ['Confidence Dashboard', 'Learning Dashboard']
+      visibleOn: ['Review & Approve', 'Learning Dashboard']
     });
   }
 
@@ -469,21 +474,21 @@ function App() {
       message: runAccessibilityWithFunctional
         ? 'Executing Playwright with accessibility checkpoints during the functional workflow.'
         : 'Executing command: npx playwright test',
-      visibleOn: ['Execution Center']
+      visibleOn: ['Run Tests']
     });
     try {
       setExecution(await apiPost('/api/execution/run', { installMissingDependencies, runAccessibilityWithFunctional }));
       setNotice({
         tone: 'success',
         title: 'Run finished',
-        message: 'Execution Center shows the Playwright result and logs. If it failed, open Self-Healing Console for the proposal.',
-        visibleOn: ['Execution Center', 'Self-Healing Console']
+        message: 'Run Tests shows the Playwright result and logs. If it failed, it also shows a suggested next step.',
+        visibleOn: ['Run Tests']
       });
-      navigate('Execution Center');
+      navigate('Run Tests');
     } catch (err) {
       const message = String(err);
       setError(message);
-      setNotice({ tone: 'error', title: 'Run failed to start', message, visibleOn: ['Execution Center'] });
+      setNotice({ tone: 'error', title: 'Run failed to start', message, visibleOn: ['Run Tests'] });
     } finally {
       setBusy(false);
     }
@@ -496,7 +501,10 @@ function App() {
       <aside className="sidebar">
         <div className="brand">
           <ShieldCheck size={24} />
-          <span>Playwright AI Control</span>
+          <div className="brand-copy">
+            <span>Playwright Automation Studio</span>
+            <small>AST-first automation: deterministic analysis with Abstract Syntax Trees; optional AI for focused review.</small>
+          </div>
         </div>
         <nav>
           {modules.map(([label, Icon]) => (
@@ -514,8 +522,8 @@ function App() {
             <p>{pageDescription(active, analysis, execution)}</p>
           </div>
           <div className="actions">
-            {active === 'Upload Center' && <button onClick={analyze} disabled={busy}><Upload size={16} />Analyze script</button>}
-            {active === 'Execution Center' && (
+            {active === 'Create Test' && <button onClick={analyze} disabled={busy}><Upload size={16} />Analyze script</button>}
+            {active === 'Run Tests' && (
               <>
                 <button onClick={runTests} disabled={busy || !index?.tests.length}><Play size={16} />Run tests</button>
                 <label className="run-option">
@@ -538,14 +546,14 @@ function App() {
                 </label>
               </>
             )}
-            {active === 'Confidence Dashboard' && <button onClick={applyChange} disabled={busy || !analysis}><CheckCircle2 size={16} />Approve files</button>}
+            {active === 'Review & Approve' && <button onClick={applyChange} disabled={busy || !analysis}><CheckCircle2 size={16} />Approve files</button>}
           </div>
         </header>
         {error && <div className="alert">{error}</div>}
         <section className="content">
           {notice && shouldShowNotice(notice, active) && <NoticeBanner notice={notice} />}
-          {active === 'Getting Started' && <GettingStarted navigate={navigate} />}
-          {active === 'Upload Center' && (
+          {active === 'Start Here' && <GettingStarted navigate={navigate} />}
+          {active === 'Create Test' && (
             <UploadCenter
               source={source}
               setSource={setSource}
@@ -560,10 +568,10 @@ function App() {
               busy={busy}
             />
           )}
-          {active === 'Framework Explorer' && <Explorer index={index} />}
+          {active === 'Project Library' && <Explorer index={index} />}
           {active === 'Index Dashboard' && <IndexDashboard index={index} />}
           {active === 'Governance Dashboard' && <Governance report={governance} />}
-          {active === 'Confidence Dashboard' && (
+          {active === 'Review & Approve' && (
             <Confidence
               analysis={analysis}
               sendFeedback={sendFeedback}
@@ -588,12 +596,11 @@ function App() {
               emptyLabel="Analyze an upload to preview generated accessibility tests."
             />
           )}
-          {active === 'Execution Center' && <Execution execution={execution} hasTests={Boolean(index?.tests.length)} />}
-          {active === 'Self-Healing Console' && <Healing execution={execution} />}
+          {active === 'Run Tests' && <Execution execution={execution} hasTests={Boolean(index?.tests.length)} />}
           {active === 'AI Insights' && <AiInsights analysis={analysis} />}
           {active === 'Learning Dashboard' && <LearningDashboard learning={learning} />}
           {active === 'Token Analytics' && <TokenAnalytics stats={stats} />}
-          {active === 'Git & Pull Request' && (
+          {active === 'Git & Pull Requests' && (
             <GitReview
               git={git}
               readiness={pullRequestReadiness}
@@ -602,7 +609,8 @@ function App() {
                     ...pullRequestReadiness.existingPullRequest,
                     baseBranch: pullRequestReadiness.baseBranch ?? '',
                     commit: '',
-                    updated: true
+                    updated: true,
+                    returnedToDefaultBranch: false
                   }
                 : undefined)}
               closedPullRequest={closedPullRequest}
@@ -612,12 +620,38 @@ function App() {
               startLogin={beginGitHubLogin}
               refresh={refreshGit}
               loginPending={githubLoginPending}
-              closePullRequest={closeDraftPullRequest}
+              closePullRequest={requestClosePullRequest}
               busy={busy}
             />
           )}
         </section>
       </main>
+      {closeConfirmation !== undefined && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="close-pr-title" aria-describedby="close-pr-description">
+            <h2 id="close-pr-title">{closeConfirmation ? 'Close PR and delete remote branch?' : 'Close this pull request?'}</h2>
+            <p id="close-pr-description">
+              {closeConfirmation
+                ? 'This closes the draft pull request and permanently deletes its remote automation branch from GitHub. Your local branch and files will be kept.'
+                : 'This closes the draft pull request on GitHub. Its remote branch and your local files will be kept, so it can be reopened or reused later.'}
+            </p>
+            <div className="modal-actions">
+              <button onClick={() => setCloseConfirmation(undefined)} disabled={busy}>Cancel</button>
+              <button
+                className={closeConfirmation ? 'danger' : ''}
+                onClick={() => {
+                  const deleteRemoteBranch = closeConfirmation;
+                  setCloseConfirmation(undefined);
+                  void closeDraftPullRequest(deleteRemoteBranch);
+                }}
+                disabled={busy}
+              >
+                {closeConfirmation ? 'Close PR & delete branch' : 'Close PR'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -626,23 +660,20 @@ function GettingStarted({ navigate }: { navigate: (page: string) => void }) {
   return (
     <div className="stack">
       <div className="panel wide getting-started-hero">
-        <h2>Start here</h2>
-        <p>Create or upload a Playwright script, review the proposed framework files, approve them, then run the tests.</p>
+        <h2>Create your first test</h2>
+        <p>Start with a Playwright script or a recorded browser workflow. The studio then prepares a reviewable proposal before anything is written to your project.</p>
         <div className="next-actions">
-          <button className="primary" onClick={() => navigate('Upload Center')}><Upload size={16} />Create a script</button>
-          <button onClick={() => navigate('Framework Explorer')}><FileSearch size={16} />View project assets</button>
+          <button className="primary" onClick={() => navigate('Create Test')}><Upload size={16} />Create a script</button>
+          <button onClick={() => navigate('Project Library')}><FileSearch size={16} />View project assets</button>
         </div>
       </div>
       <div className="guide-steps">
-        <GuideStep number="1" title="Create a script" text="Upload an existing Playwright script or enter a URL to record one with Playwright Codegen." action="Open Upload Center" onClick={() => navigate('Upload Center')} />
-        <GuideStep number="2" title="Analyze the script" text="The platform checks the script, looks for reusable assets, and prepares page object, functional, and accessibility test proposals." action="Review confidence" onClick={() => navigate('Confidence Dashboard')} />
-        <GuideStep number="3" title="Review and approve" text="Preview the proposed files and project-rule checks. Approval commits only those files and creates a draft GitHub pull request." action="View project rules" onClick={() => navigate('Governance Dashboard')} />
-        <GuideStep number="4" title="Run the tests" text="Run functional tests, optionally include accessibility tests, and use the failure guidance if a test needs attention." action="Open Execution Center" onClick={() => navigate('Execution Center')} />
+        <GuideStep number="1" title="Create a script" text="Upload an existing Playwright script or enter a URL to record one with Playwright Codegen." action="Create test" onClick={() => navigate('Create Test')} />
+        <GuideStep number="2" title="Review the proposal" text="The platform checks the script, looks for reusable assets, and prepares page object, functional, and accessibility test proposals." action="Review proposal" onClick={() => navigate('Review & Approve')} />
+        <GuideStep number="3" title="Approve and open a draft PR" text="Preview the proposed files, project-rule checks, and impact before approval. Approval creates a draft GitHub pull request." action="Git & pull requests" onClick={() => navigate('Git & Pull Requests')} />
+        <GuideStep number="4" title="Run the tests" text="Run functional tests, optionally include accessibility tests, and review any failure guidance." action="Run tests" onClick={() => navigate('Run Tests')} />
       </div>
-      <div className="panel wide">
-        <h2>What each tab is for</h2>
-        <Table rows={Object.entries(tabDescriptions).map(([tab, description]) => [tab, description])} />
-      </div>
+      <p className="helper-text getting-started-note">Generated functional and accessibility files are previewed from Review & Approve. If a test fails, suggested next steps appear directly below the result in Run Tests.</p>
     </div>
   );
 }
@@ -747,7 +778,7 @@ function Explorer({ index }: { index?: FrameworkIndex }) {
         <p className="helper-text">This tab shows the approved tests, page objects, locators, workflows, and accessibility coverage already available in this project. The platform uses these assets to avoid creating duplicates.</p>
       </div>
       {assetCount === 0 ? (
-        <div className="empty">This is a fresh project—there are no approved automation assets yet. Start in Upload Center to create or record a script, then analyze and approve the proposed files. They will appear here after approval.</div>
+        <div className="empty">This is a fresh project—there are no approved automation assets yet. Start in Create Test to create or record a script, then analyze and approve the proposed files. They will appear here after approval.</div>
       ) : (
         <>
           <Grid items={[
@@ -823,6 +854,7 @@ function Confidence({
   if (!analysis) return <Empty label="Analyze an upload to populate confidence scoring." />;
   const learningFactors = analysis.confidence.learningInfluence?.factors ?? [];
   const learningAdjustment = analysis.confidence.learningInfluence?.adjustment ?? 0;
+  const hasPastExperience = learningFactors.length > 0;
   const workflowSimilarity = analysis.confidence.similarityMetrics.workflowSimilarity ?? 0;
   return (
     <div className="workspace">
@@ -830,11 +862,10 @@ function Confidence({
         <h2>Recommendation</h2>
         <div className={`score ${analysis.confidence.band}`}>{analysis.confidence.score}%</div>
         <Metric label="What to do" value={confidenceAction(analysis.confidence.band)} />
-        <Metric label="Score before project history" value={`${analysis.confidence.learningInfluence?.originalScore ?? analysis.confidence.score}%`} />
-        <Metric label="Change from past project results" value={`${learningAdjustment > 0 ? '+' : ''}${learningAdjustment} points`} />
+        {hasPastExperience && <Metric label="Change from matching past project results" value={`${learningAdjustment > 0 ? '+' : ''}${learningAdjustment} points`} />}
         <p>{analysis.confidence.reasoningSummary}</p>
         <div className="next-actions">
-          <button onClick={() => setActive('Upload Center')}><ArrowLeft size={16} />Edit Upload</button>
+          <button onClick={() => setActive('Create Test')}><ArrowLeft size={16} />Edit Upload</button>
           <button onClick={() => setActive('Functional Tests')}>Preview Functional</button>
           <button onClick={() => setActive('Accessibility Tests')}>Preview A11y</button>
           <button className="primary" onClick={approve} disabled={busy}><CheckCircle2 size={16} />Approve Files</button>
@@ -849,6 +880,12 @@ function Confidence({
       <div className="panel wide">
         <h2>What we checked</h2>
         <p className="helper-text">These checks help you decide whether the generated files are safe to review and approve.</p>
+        {analysis.semanticReview?.status === 'fallback' && (
+          <div className="setup-warning">
+            <strong>AI review unavailable — safe fallback used</strong>
+            <span>{analysis.semanticReview.message}</span>
+          </div>
+        )}
         <Table rows={[
           [
             'Existing workflow match',
@@ -862,26 +899,48 @@ function Confidence({
             analysis.governance.passed ? 'Passed' : 'Needs attention',
             analysis.governance.passed
               ? 'Naming, folder placement, locator rules, and test structure passed.'
-              : 'Open Governance Dashboard to review the issues before approving.'
+              : 'Expand rule details below and resolve blockers before approving.'
           ],
-          [
+          ...(hasPastExperience ? [[
             'Past project experience',
             `${learningAdjustment > 0 ? '+' : ''}${learningAdjustment} points`,
-            learningAdjustment
-              ? 'Past accepted changes and test outcomes adjusted the score. This does not replace your review.'
-              : 'No relevant past project results changed this score.'
-          ]
+            'Matching past reviews and test outcomes adjusted the score. This does not replace your review.'
+          ]] : [])
         ]} />
-        <h2 className="section-title">How past project experience affected the score</h2>
-        <p className="helper-text">This is based only on previous team decisions and results saved in this project.</p>
-        <Table rows={learningFactors.map((factor) => [friendlyFactorName(factor.name), formatAdjustment(factor.adjustment), factor.evidence])} />
         <details className="technical-details">
-          <summary>Show technical details</summary>
-          <Table rows={[
-            ...Object.entries(analysis.confidence.similarityMetrics).map(([key, value]) => [key, String(value)]),
-            ...analysis.confidence.retrievedAssetsUsed.map((asset) => ['Related project asset', asset])
-          ]} />
+          <summary>View project-rule details</summary>
+          {analysis.governance.violations.length ? (
+            <Table rows={analysis.governance.violations.map((violation) => [violation.severity, violation.rule, violation.message, violation.filePath ?? ''])} />
+          ) : <p className="helper-text">All project rules passed for this proposal.</p>}
         </details>
+        {hasPastExperience && <>
+          <h2 className="section-title">How matching past project experience affected the score</h2>
+          <p className="helper-text">This is based only on previous decisions and test results for matching patterns in this project.</p>
+          <Table rows={learningFactors.map((factor) => [friendlyFactorName(factor.name), formatAdjustment(factor.adjustment), factor.evidence])} />
+        </>}
+        <h2 className="section-title">Change scope</h2>
+        <p className="helper-text">This shows exactly what the proposal will create, update, or reuse before any file is written.</p>
+        <Table rows={[
+          ['Risk', analysis.impact.risk === 'low' ? 'Low' : analysis.impact.risk === 'medium' ? 'Medium' : 'High', analysis.impact.summary],
+          ['Files to create', analysis.impact.createdFiles.length ? analysis.impact.createdFiles.join(', ') : 'None', 'These files will be created after approval.'],
+          ['Existing files to update', analysis.impact.updatedFiles.length ? analysis.impact.updatedFiles.join(', ') : 'None', 'Existing files are changed only after approval.'],
+          ['Related existing tests', analysis.impact.affectedTests.length ? analysis.impact.affectedTests.join(', ') : 'None found', 'Tests directly linked to an existing file that this proposal changes.'],
+          ['Existing assets to reuse', analysis.impact.reusedAssets.length ? analysis.impact.reusedAssets.join(', ') : 'None', 'Existing page objects or components called by the proposed test.']
+        ]} />
+        <p className="helper-text">{analysis.impact.limitation}</p>
+        <h2 className="section-title">Analysis details</h2>
+        <Table rows={[
+          ['Workflow similarity', `${workflowSimilarity}%`, workflowSimilarity ? 'A related workflow was found in this project.' : 'No related workflow was found.'],
+          ['Related project assets', analysis.confidence.retrievedAssetsUsed.length ? analysis.confidence.retrievedAssetsUsed.join(', ') : 'None', 'Assets considered during the review.']
+        ]} />
+        <h2 className="section-title">AI and context usage</h2>
+        <Table rows={[
+          ['Optional AI review', analysis.semanticReview?.status === 'fallback' ? 'Unavailable — deterministic fallback used' : analysis.semanticReview?.provider === 'gemini' ? 'Google Gemini' : analysis.semanticReview?.provider === 'ollama' ? 'Ollama (local)' : 'Not enabled'],
+          ['Model', analysis.semanticReview?.model ?? 'Not applicable'],
+          ['Retrieved context', `${analysis.retrieval.tokenEstimate} estimated tokens`, 'Only relevant framework metadata is considered for semantic review.'],
+          ['Raw repository source', 'Not sent to AI', 'Deterministic AST analysis and governance run locally.'],
+          ...(analysis.semanticReview?.message ? [['Fallback message', analysis.semanticReview.message, 'The analysis still completed using safe local rules.']] : [])
+        ]} />
       </div>
     </div>
   );
@@ -927,9 +986,9 @@ function GeneratedFiles({
         <div className="section-header">
           <div>
             <h2>Generated File Preview</h2>
-            <p className="helper-text">These files have not been written yet. Use Approve from the Confidence Dashboard to apply them.</p>
+            <p className="helper-text">These files have not been written yet. Use Approve from Review & Approve to apply them.</p>
           </div>
-          <button onClick={() => setActive('Confidence Dashboard')}><ArrowLeft size={16} />Back to Confidence</button>
+          <button onClick={() => setActive('Review & Approve')}><ArrowLeft size={16} />Back to Review</button>
         </div>
       </div>
       {files.length ? files.map((file) => <CodePanel key={file.path} title={file.path} code={file.content} />) : <Empty label={emptyLabel} />}
@@ -943,15 +1002,18 @@ function Execution({ execution, hasTests }: { execution: any; hasTests: boolean 
     : 'No dependency install attempted.';
 
   return (
-    <div className="panel wide">
-      <h2>Run Result</h2>
-      {!execution && !hasTests && <div className="empty">No approved tests are available yet. Create a script, analyze it, review the proposal, and approve the generated files before running tests.</div>}
-      <Metric label="Command" value="npx playwright test" />
-      <Metric label="Status" value={execution ? (execution.result.passed ? 'Passed' : 'Failed') : hasTests ? 'Ready to run' : 'Waiting for approved tests'} />
-      <Metric label="Functional a11y" value={execution?.result.accessibilityWithFunctional ? 'Enabled' : 'Disabled'} />
-      <Metric label="Dependency retry" value={execution?.result.retried ? 'Yes' : 'No'} />
-      <pre>{installSummary}</pre>
-      <pre>{execution?.result.logs ?? 'Run tests to collect logs, screenshots, videos, traces, and root cause analysis.'}</pre>
+    <div className="stack">
+      <div className="panel wide">
+        <h2>Run Result</h2>
+        {!execution && !hasTests && <div className="empty">No approved tests are available yet. Create a script, analyze it, review the proposal, and approve the generated files before running tests.</div>}
+        <Metric label="Command" value="npx playwright test" />
+        <Metric label="Status" value={execution ? (execution.result.passed ? 'Passed' : 'Failed') : hasTests ? 'Ready to run' : 'Waiting for approved tests'} />
+        <Metric label="Functional a11y" value={execution?.result.accessibilityWithFunctional ? 'Enabled' : 'Disabled'} />
+        <Metric label="Dependency retry" value={execution?.result.retried ? 'Yes' : 'No'} />
+        <pre>{installSummary}</pre>
+        <pre>{execution?.result.logs ?? 'Run tests to collect logs, screenshots, videos, traces, and root cause analysis.'}</pre>
+      </div>
+      {execution && !execution.result.passed && <Healing execution={execution} />}
     </div>
   );
 }
@@ -959,23 +1021,27 @@ function Execution({ execution, hasTests }: { execution: any; hasTests: boolean 
 function Healing({ execution }: { execution: any }) {
   return (
     <div className="panel wide">
-      <h2>Healing Proposal</h2>
+      <h2>Suggested next step</h2>
       {execution?.healing ? (
         <>
           <Metric label="Confidence" value={`${execution.healing.confidence.score}%`} />
+          <p className="helper-text">Review this suggestion before changing any test or page object.</p>
           <p>{execution.healing.rootCause}</p>
           <pre>{execution.healing.proposedFix}</pre>
         </>
-      ) : <Empty label="No failing execution evidence available." />}
+      ) : <Empty label="No automatic suggestion is available for this failure. Review the run logs and Playwright artifacts." />}
     </div>
   );
 }
 
 function AiInsights({ analysis }: { analysis?: AnalysisResponse }) {
+  const semanticReview = analysis?.semanticReview;
   return (
     <div className="panel wide">
-      <h2>AI Boundary</h2>
+      <h2>AI review</h2>
       <Table rows={[
+        ['Provider', semanticReview?.provider === 'gemini' ? 'Google Gemini' : semanticReview?.provider === 'ollama' ? 'Ollama (local)' : 'Not enabled'],
+        ['Model', semanticReview?.model ?? 'Not applicable'],
         ['Context sent', analysis ? 'Workflow summary, retrieved assets, similarity metrics' : 'None'],
         ['Raw repository', 'Blocked'],
         ['Raw code embeddings', 'Blocked'],
@@ -987,6 +1053,27 @@ function AiInsights({ analysis }: { analysis?: AnalysisResponse }) {
 
 function LearningDashboard({ learning }: { learning?: LearningDashboardResponse }) {
   if (!learning) return <Empty label="Learning profile has not been generated yet." />;
+  const outcomes = learning.profile.historicalOutcomes;
+  const decisionCount = outcomes.accepted + outcomes.rejected + outcomes.modified;
+  if (decisionCount === 0) {
+    return (
+      <div className="stack">
+        <div className="panel wide">
+          <h2>Learning history</h2>
+          <p className="helper-text">Nothing has been learned from this project yet. This page fills in only after real proposal reviews and test outcomes.</p>
+          <div className="setup-explanation">
+            <strong>What will appear here</strong>
+            <span>Approved, modified, and rejected proposals; patterns that worked in test runs; and project-specific preferences. The safe Playwright defaults used to generate a proposal are not treated as learned team preferences.</span>
+          </div>
+        </div>
+        <div className="grid">
+          <Metric label="Reviewed proposals" value="0" />
+          <Metric label="Successful test runs" value="0" />
+          <Metric label="Project preferences" value="Not learned yet" />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="stack">
       <div className="grid">
@@ -995,7 +1082,7 @@ function LearningDashboard({ learning }: { learning?: LearningDashboardResponse 
         <Metric label="Page object pattern" value={learning.profile.preferredPageObjectPattern} />
         <Metric label="Accessibility rules" value={learning.profile.preferredAccessibilityRules} />
         <Metric label="Self-healing success" value={`${learning.selfHealingSuccessRate}%`} />
-        <Metric label="Accepted decisions" value={String(learning.profile.historicalOutcomes.accepted)} />
+        <Metric label="Accepted decisions" value={String(outcomes.accepted)} />
       </div>
       <div className="workspace">
         <div className="panel wide">
@@ -1056,7 +1143,7 @@ function GitReview({
   startLogin: () => Promise<void>;
   refresh: () => Promise<void>;
   loginPending: boolean;
-  closePullRequest: (deleteRemoteBranch: boolean) => Promise<void>;
+  closePullRequest: (deleteRemoteBranch: boolean) => void;
   busy: boolean;
 }) {
   const setupCommand = 'gh auth login --web';
@@ -1125,6 +1212,12 @@ function GitReview({
       <div className="panel wide">
         <h2>GitHub pull request</h2>
         <p className="helper-text">When you approve a proposal, the platform commits only the generated files, pushes a new automation branch, and creates a draft GitHub pull request.</p>
+        {readiness && (
+          <div className="branch-status" aria-label="Git branch status">
+            <span><strong>Current branch:</strong> <code>{readiness.branch ?? 'Not detected'}</code></span>
+            <span><strong>Default branch:</strong> <code>{readiness.baseBranch ?? 'Not detected'}</code></span>
+          </div>
+        )}
         {pullRequest ? (
           <>
             <div className="pull-request-link">
@@ -1157,10 +1250,6 @@ function GitReview({
           </>
         ) : <Empty label="Checking GitHub pull request setup…" />}
       </div>
-      <div className="workspace">
-        <CodePanel title="Working tree status" code={git?.status ?? 'Git repository is not initialized.'} />
-        <CodePanel title="Changes not yet committed" code={git?.diff || 'No tracked-file diff is currently available.'} />
-      </div>
     </div>
   );
 }
@@ -1180,7 +1269,7 @@ function shouldShowNotice(notice: Notice, active: string): boolean {
 
 function pageFromHash(hash = window.location.hash): string {
   const key = hash.replace(/^#\/?/, '');
-  return pageRoutes.get(key) ?? 'Getting Started';
+  return pageRoutes.get(key) ?? legacyPageRoutes[key] ?? 'Start Here';
 }
 
 function hashForPage(page: string): string {
@@ -1192,26 +1281,26 @@ function slugify(value: string): string {
 }
 
 function pageDescription(active: string, analysis?: AnalysisResponse, execution?: any): string {
-  if (active === 'Confidence Dashboard' && !analysis) return 'Analyze a script first, then use this tab to review its proposal before approving it.';
-  if (active === 'Execution Center' && execution) return 'Review the latest test run and its logs. If it failed, open Self-Healing Console for guidance.';
+  if (active === 'Review & Approve' && !analysis) return 'Analyze a script first, then use this page to review its proposal before approving it.';
+  if (active === 'Run Tests' && execution) return 'Review the latest test run and its logs. If it failed, the suggested next step appears below.';
   return tabDescriptions[active] ?? 'Choose a tab from the sidebar to continue.';
 }
 
 const tabDescriptions: Record<string, string> = {
-  'Getting Started': 'A guided overview of the workflow and a plain-language explanation of every tab.',
-  'Upload Center': 'Create a script by uploading or pasting one, or record a new script from a URL with Playwright Codegen.',
-  'Framework Explorer': 'See what tests, workflows, page objects, locators, and accessibility checks already exist in this project.',
+  'Start Here': 'A guided overview of the workflow and the next action to take.',
+  'Create Test': 'Create a script by uploading or pasting one, or record a new script from a URL with Playwright Codegen.',
+  'Project Library': 'See what tests, workflows, page objects, locators, and accessibility checks already exist in this project.',
   'Index Dashboard': 'See when the project scan last ran and how much automation code it found.',
   'Governance Dashboard': 'Check whether the project follows naming, folder, locator, and accessibility rules.',
-  'Confidence Dashboard': 'Review why a proposed change was suggested, preview its files, and approve it only when it is correct.',
+  'Review & Approve': 'Review why a proposed change was suggested, preview its files, and approve it only when it is correct.',
   'Functional Tests': 'Preview the functional test file that would be created after approval.',
   'Accessibility Tests': 'Preview the accessibility test file that would be created after approval.',
-  'Execution Center': 'Run the approved tests and choose whether to include accessibility tests.',
+  'Run Tests': 'Run the approved tests and choose whether to include accessibility tests.',
   'Self-Healing Console': 'See suggested next steps when the most recent test run fails.',
   'AI Insights': 'See the limited information used for optional AI review; raw repository code is not sent to AI.',
   'Learning Dashboard': 'See aggregate patterns from approved project decisions and successful outcomes.',
   'Token Analytics': 'See how indexing reduces the amount of project information needed for analysis.',
-  'Git & Pull Request': 'Check GitHub setup and see the draft pull request created automatically after approval.'
+  'Git & Pull Requests': 'Check GitHub setup and see the draft pull request created automatically after approval.'
 };
 
 function collectPatterns(analysis: AnalysisResponse): string[] {

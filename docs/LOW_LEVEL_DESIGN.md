@@ -5,13 +5,13 @@
 1. Receive Codegen script through `/api/analysis/upload`.
 2. Detect language from extension and syntax.
 3. Extract locators, actions, assertions, navigation, tags, data usage, and workflow intent deterministically.
-4. Build or load the framework index.
+4. Build and persist a current framework index from the filesystem.
 5. Retrieve similar workflows, page objects, and tests.
-6. Optionally call Ollama with reduced semantic context.
-7. Produce a confidence decision.
-8. Generate POM, functional test, and accessibility test proposals.
-9. Run governance and quality gates.
-10. Return proposed files, evidence, warnings, and confidence metadata.
+6. Optionally call the configured semantic provider with reduced context.
+7. If a provider fails or is quota/rate limited, retain a visible fallback warning and continue with safe deterministic selection.
+8. Select a compatible reusable page object when one has safe business and verification methods; otherwise generate a new page object.
+9. Produce a confidence decision, governance report, quality result, and source-level impact report.
+10. Return proposed files, evidence, warnings, change scope, and confidence metadata.
 
 ## Deterministic Analysis Contract
 
@@ -28,8 +28,8 @@ Current implementation provides deterministic extractors in `packages/core/src/a
 
 ## Governance Rules
 
-- Pages must use `LoginPage.ts` style names under `pages/`.
-- Components must use `HeaderComponent.ts` style names under `components/`.
+- Pages must use `<Workflow>Page.ts` names under `pages/`.
+- Components must use `<Name>Component.ts` names under `components/`.
 - Functional tests must live in `tests/functional`.
 - Accessibility tests must live in `tests/accessibility`.
 - Test files must call page-object workflows, not raw Playwright locators.
@@ -44,12 +44,21 @@ Current implementation provides deterministic extractors in `packages/core/src/a
 | POST | `/api/analysis/upload` | Analyze uploaded script and propose framework assets |
 | POST | `/api/analysis/feedback` | Capture Accept, Reject, or Modify feedback for a recommendation |
 | POST | `/api/analysis/apply` | Apply approved proposed files and re-index |
-| GET | `/api/index` | Load or build framework index |
+| GET | `/api/index` | Build and return current framework index |
 | POST | `/api/index/rebuild` | Force deterministic re-index |
 | GET | `/api/governance/report` | Repository governance report |
 | POST | `/api/execution/run` | Run Playwright and return healing proposal on failure |
+| POST | `/api/recording/sessions` | Start local Playwright Codegen from a URL |
+| GET | `/api/recording/sessions/:id` | Read recording status/source |
+| POST | `/api/recording/sessions/:id/stop` | Stop Codegen recording |
+| POST | `/api/recording/sessions/:id/save` | Stage recorded source for upload |
 | GET | `/api/git/status` | Git status and diff |
 | POST | `/api/git/commit` | Commit approved changes |
+| GET | `/api/git/pull-request-readiness` | Check GitHub CLI, authentication, remote, and branch prerequisites |
+| POST | `/api/git/remote` | Configure GitHub repository remote |
+| POST | `/api/git/auth/login` | Start GitHub CLI sign-in |
+| POST | `/api/git/pull-request` | Create or update a draft pull request from approved files |
+| POST | `/api/git/pull-request/close` | Close a draft pull request and optionally delete remote branch |
 | GET | `/api/learning/profile` | Current Team Automation Profile |
 | GET | `/api/learning/dashboard` | Learning dashboard metrics and trends |
 | GET | `/api/learning/events` | Eligible learning event history |
@@ -86,4 +95,4 @@ storage/
 
 ## Approval Flow
 
-The API currently requires explicit approval in `/api/analysis/apply`. Production hardening should add role-based approval, immutable audit records, and branch-policy aware commits.
+The API requires explicit approval in `/api/analysis/apply`. When GitHub prerequisites are met, the approved file set is committed on an isolated automation branch, pushed, and opened or updated as a draft PR. The API returns the local checkout to the default branch after the operation. Production hardening can add role-based approval and immutable audit records.

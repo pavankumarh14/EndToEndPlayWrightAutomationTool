@@ -49,7 +49,9 @@ export interface WorkflowModel {
 export interface PageObjectModel {
   name: string;
   filePath: string;
+  className?: string;
   methods: string[];
+  methodDetails: Array<{ name: string; parameterCount: number }>;
   locators: LocatorModel[];
 }
 
@@ -113,6 +115,17 @@ export interface GovernanceViolation {
 export interface GovernanceReport {
   passed: boolean;
   violations: GovernanceViolation[];
+}
+
+export interface ChangeImpactReport {
+  risk: 'low' | 'medium' | 'high';
+  createdFiles: string[];
+  updatedFiles: string[];
+  affectedTests: string[];
+  affectedPageObjects: string[];
+  reusedAssets: string[];
+  summary: string;
+  limitation: string;
 }
 
 export interface TokenStats {

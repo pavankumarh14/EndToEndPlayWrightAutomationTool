@@ -133,46 +133,40 @@ export class FrameworkLearningEngine {
 
   async adaptiveInfluence(input: AdaptiveConfidenceInput): Promise<LearningInfluence> {
     const events = await this.readEvents();
-    const accepted = events.filter((event) => event.action === 'accepted' || event.action === 'modified');
-    const rejected = events.filter((event) => event.action === 'rejected');
-    const historicalAcceptanceRate = averageAcceptance(input.patterns, accepted, rejected);
-    const previousSuccessRate = successRate(input.patterns, events);
-    const teamAlignment = teamPreferenceAlignment(input.patterns, this.buildProfile(events));
-    const factors = [
-      {
+    const matchingEvents = events.filter((event) => event.patterns.some((pattern) => input.patterns.includes(pattern)));
+    const accepted = matchingEvents.filter((event) => event.action === 'accepted' || event.action === 'modified');
+    const rejected = matchingEvents.filter((event) => event.action === 'rejected');
+    const completed = matchingEvents.filter((event) => event.executionResult === 'successful' || event.executionResult === 'failed');
+    const factors: LearningInfluence['factors'] = [];
+
+    if (accepted.length || rejected.length) {
+      const historicalAcceptanceRate = averageAcceptance(input.patterns, accepted, rejected);
+      factors.push({
         name: 'Historical Acceptance Rate',
         adjustment: Math.round((historicalAcceptanceRate - 50) / 5),
-        evidence: `${historicalAcceptanceRate}% acceptance for similar patterns`
-      },
-      {
-        name: 'Governance Compliance',
-        adjustment: input.governanceCompliant ? 5 : -12,
-        evidence: input.governanceCompliant ? 'Current proposal passes governance' : 'Current proposal has governance findings'
-      },
-      {
+        evidence: `${historicalAcceptanceRate}% acceptance for similar patterns across ${accepted.length + rejected.length} previous reviews`
+      });
+    }
+    if (completed.length) {
+      const previousSuccessRate = successRate(input.patterns, completed);
+      factors.push({
         name: 'Previous Success Rate',
         adjustment: Math.round((previousSuccessRate - 50) / 8),
-        evidence: `${previousSuccessRate}% successful outcomes after similar accepted changes`
-      },
-      {
+        evidence: `${previousSuccessRate}% successful outcomes across ${completed.length} similar completed test runs`
+      });
+    }
+    const profile = this.buildProfile(events);
+    const matchingStandards = profile.teamStandards.filter((pattern) => input.patterns.includes(pattern));
+    if (matchingStandards.length) {
+      const teamAlignment = teamPreferenceAlignment(input.patterns, profile);
+      factors.push({
         name: 'Team Preference Alignment',
         adjustment: Math.round(teamAlignment / 10),
-        evidence: `${teamAlignment}% alignment with the current Team Automation Profile`
-      },
-      {
-        name: 'Execution Success History',
-        adjustment: input.executionSuccessful === undefined ? 0 : input.executionSuccessful ? 4 : -8,
-        evidence:
-          input.executionSuccessful === undefined
-            ? 'No execution outcome attached to this recommendation'
-            : input.executionSuccessful
-              ? 'Latest execution succeeded'
-              : 'Latest execution failed'
-      }
-    ];
+        evidence: `${teamAlignment}% alignment with ${matchingStandards.length} learned team standard${matchingStandards.length === 1 ? '' : 's'}`
+      });
+    }
     const adjustment = clamp(factors.reduce((total, factor) => total + factor.adjustment, 0), -25, 25);
     const finalScore = clamp(input.baseScore + adjustment, 0, 100);
-    const profile = this.buildProfile(events);
     return {
       originalScore: input.baseScore,
       finalScore,
@@ -257,7 +251,9 @@ export function applyLearningInfluence(
           : finalScore < 60
             ? 'high-risk'
             : 'recommendation',
-    reasoningSummary: `${decision.reasoningSummary} Team learning adjusted confidence by ${influence.adjustment} points.`,
+    reasoningSummary: influence.factors.length
+      ? `${decision.reasoningSummary} Past project evidence adjusted confidence by ${influence.adjustment} points.`
+      : decision.reasoningSummary,
     learningInfluence: influence
   };
 }

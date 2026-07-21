@@ -7,13 +7,17 @@ import {
   ConfidenceEngine,
   FrameworkIndexer,
   GovernanceEngine,
+  ImpactAnalyzer,
+  GeminiClient,
   OllamaClient,
   QualityGate,
   RetrievalEngine,
+  selectReusablePageObject,
   FrameworkLearningEngine,
   applyLearningInfluence,
   generateAccessibilityTest,
   generateFunctionalTest,
+  generateReusedFunctionalTest,
   generatePageObject
 } from '@platform/core';
 import { config, repositoryRoot } from '../config.js';
@@ -30,14 +34,27 @@ analysisRouter.post('/upload', upload.single('script'), async (req, res, next) =
     const parsed = analyzeUploadedScript(source, fileName);
     const indexer = new FrameworkIndexer(config);
     const index = await indexer.buildIndex();
+    // Keep the Project Library in sync with the analysis that the user is reviewing.
+    // Otherwise a previously persisted snapshot can describe files that were removed.
+    await indexer.persist(index);
     const workflow = parsed.workflows[0];
     const retrieval = new RetrievalEngine().retrieve(workflow, index);
-    const semantic = await new OllamaClient(config.ollama.baseUrl, config.ollama.model, config.ollama.enabled).decide({
-      task: 'classify new versus update and select reusable assets',
+    const semanticRequest = {
+      task: 'Classify this as a new workflow or an update. If a reusable page object is appropriate, set selectedAsset to its exact filePath. Do not select an asset unless it is clearly compatible.',
       workflowSummary: workflow.intent,
       retrievedAssets: retrieval,
       similarityResults: retrieval.evidence
-    });
+    };
+    let semantic: Awaited<ReturnType<GeminiClient['decide']>> | undefined;
+    let semanticFallbackMessage: string | undefined;
+    try {
+      semantic = config.semanticProvider === 'gemini'
+        ? await new GeminiClient(config.gemini.apiKey, config.gemini.model).decide(semanticRequest)
+        : await new OllamaClient(config.ollama.baseUrl, config.ollama.model, config.semanticProvider === 'ollama').decide(semanticRequest);
+    } catch (error) {
+      semanticFallbackMessage = aiFallbackMessage(error);
+    }
+    const reusablePageObject = selectReusablePageObject(workflow, retrieval.pageObjects, semantic?.selectedAsset);
     const similarityScore = Math.max(
       ...retrieval.workflows.map((candidate) =>
         Math.round(overlap(workflow.intent, `${candidate.name} ${candidate.intent}`))
@@ -57,12 +74,20 @@ analysisRouter.post('/upload', upload.single('script'), async (req, res, next) =
     });
     const pageClassName = `${toPascal(workflow.name)}Page`;
     const files = [
-      { path: `pages/${pageClassName}.ts`, content: generatePageObject(workflow, pageClassName), action: 'create' as const },
-      {
-        path: `tests/functional/${toKebab(workflow.name)}.spec.ts`,
-        content: generateFunctionalTest(workflow, pageClassName),
-        action: 'create' as const
-      },
+      ...(reusablePageObject
+        ? [{
+            path: `tests/functional/${toKebab(workflow.name)}.spec.ts`,
+            content: generateReusedFunctionalTest(workflow, reusablePageObject),
+            action: 'create' as const
+          }]
+        : [
+            { path: `pages/${pageClassName}.ts`, content: generatePageObject(workflow, pageClassName), action: 'create' as const },
+            {
+              path: `tests/functional/${toKebab(workflow.name)}.spec.ts`,
+              content: generateFunctionalTest(workflow, pageClassName),
+              action: 'create' as const
+            }
+          ]),
       {
         path: `tests/accessibility/${toKebab(workflow.name)}.a11y.spec.ts`,
         content: generateAccessibilityTest(workflow),
@@ -70,6 +95,7 @@ analysisRouter.post('/upload', upload.single('script'), async (req, res, next) =
       }
     ];
     const governance = new GovernanceEngine().validateChange({ files });
+    const impact = await new ImpactAnalyzer(repositoryRoot).analyze(files);
     const learning = new FrameworkLearningEngine(repositoryRoot);
     const learningInfluence = await learning.adaptiveInfluence({
       baseScore: confidence.score,
@@ -91,11 +117,20 @@ analysisRouter.post('/upload', upload.single('script'), async (req, res, next) =
       retrieval,
       confidence: adaptiveConfidence,
       governance,
+      impact,
       quality,
+      semanticReview: {
+        provider: config.semanticProvider,
+        model: config.semanticProvider === 'gemini' ? config.gemini.model : config.semanticProvider === 'ollama' ? config.ollama.model : undefined,
+        status: semanticFallbackMessage ? 'fallback' : semantic ? 'used' : 'not-enabled',
+        message: semanticFallbackMessage
+      },
       proposedChange: {
-        kind: similarityScore >= 80 ? 'existing-workflow-update' : 'new-test',
+        kind: reusablePageObject || similarityScore >= 80 ? 'existing-workflow-update' : 'new-test',
         files,
-        auditSummary: 'Generated from deterministic AST extraction, retrieval, governance validation, and confidence scoring.'
+        auditSummary: reusablePageObject
+          ? `${reusablePageObject.reason} A new functional test and accessibility test were generated without creating a duplicate page object.`
+          : 'Generated from deterministic AST extraction, retrieval, governance validation, and confidence scoring.'
       }
     });
   } catch (error) {
@@ -186,6 +221,14 @@ function overlap(left: string, right: string): number {
   const r = new Set(right.toLowerCase().split(/\W+/).filter(Boolean));
   const intersection = [...l].filter((token) => r.has(token)).length;
   return ((intersection / (new Set([...l, ...r]).size || 1)) * 100);
+}
+
+function aiFallbackMessage(error: unknown): string {
+  const details = String(error).toLowerCase();
+  const quotaOrTokenLimit = /429|quota|resource_exhausted|rate limit|token limit|too many requests/.test(details);
+  return quotaOrTokenLimit
+    ? 'The configured AI provider reached a quota, rate, or token limit. The platform continued with the closest safe local match found by AST and project-index rules.'
+    : 'The configured AI provider was unavailable. The platform continued with the closest safe local match found by AST and project-index rules.';
 }
 
 function filesFromWorkflow(workflowName: string): string[] {
