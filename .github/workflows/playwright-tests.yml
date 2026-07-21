@@ -1,4 +1,4 @@
-name: Test
+name: Playwright Test Suite
 
 on:
   push:
@@ -8,16 +8,17 @@ on:
     types: [opened, ready_for_review, reopened, synchronize]
 
 jobs:
-  test:
+  playwright-tests:
+    name: Functional and accessibility tests
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -31,7 +32,7 @@ jobs:
 
       - name: Upload test artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-report
           path: |
