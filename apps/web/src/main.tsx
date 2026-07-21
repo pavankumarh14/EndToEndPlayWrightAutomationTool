@@ -1192,14 +1192,59 @@ function Explorer({ index }: { index?: FrameworkIndex }) {
           />
           <div className="workspace">
             <AssetList title="Test files" items={index?.tests ?? []} name="name" path="filePath" />
-            <AssetList
-              title="Page objects"
-              items={index?.pageObjects ?? []}
-              name="name"
-              path="filePath"
-            />
+            <PageObjectList items={index?.pageObjects ?? []} />
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+function PageObjectList({ items }: { items: unknown[] }) {
+  const pageObjects = items as Array<{
+    name?: string;
+    filePath?: string;
+    className?: string;
+    methods?: string[];
+    methodDetails?: Array<{ name: string; parameterCount: number }>;
+    locators?: Array<{ raw: string; strategy: string; score: number; warnings?: string[] }>;
+  }>;
+  return (
+    <div className="panel wide">
+      <h2>Page objects</h2>
+      <p className="helper-text">
+        Expand a page object to see its exact methods and locators discovered from the current branch.
+      </p>
+      {pageObjects.length ? (
+        pageObjects.map((pageObject) => (
+          <details className="technical-details page-object-details" key={pageObject.filePath ?? pageObject.name}>
+            <summary>
+              {pageObject.className ?? pageObject.name ?? 'Unnamed page object'} — {pageObject.filePath ?? 'Unknown path'}
+            </summary>
+            <h3>Methods</h3>
+            <Table
+              rows={(pageObject.methodDetails ?? pageObject.methods?.map((name) => ({ name, parameterCount: 0 })) ?? []).map((method) => [
+                method.name,
+                method.parameterCount ? `${method.parameterCount} parameter(s)` : 'No parameters',
+              ])}
+            />
+            <h3>Locators</h3>
+            <Table
+              rows={(pageObject.locators ?? []).map((locator) => [
+                locator.raw,
+                locator.strategy,
+                `${locator.score}%${locator.warnings?.length ? ` — ${locator.warnings.join(', ')}` : ''}`,
+              ])}
+            />
+            {!pageObject.locators?.length && (
+              <p className="helper-text">
+                No locators are present in this saved page object. Re-analyze the original Codegen script to generate its recorded locators.
+              </p>
+            )}
+          </details>
+        ))
+      ) : (
+        <Empty label="No page objects have been approved yet." />
       )}
     </div>
   );
@@ -1387,6 +1432,11 @@ function Confidence({
           />
         )}
         <div className="panel wide">
+          <h2>Recorded script steps</h2>
+          <p className="helper-text">
+            These are the actions read from the script you uploaded. They are generated into the page object; the functional test calls that page object to keep the test readable.
+          </p>
+          <Table rows={recordedStepRows(analysis)} />
           <h2>What we checked</h2>
           <p className="helper-text">
             These checks help you decide whether the generated files are safe to review and approve.
@@ -2321,6 +2371,38 @@ const tabDescriptions: Record<string, string> = {
   'Git & Pull Requests':
     'Check GitHub setup and see the draft pull request created automatically after approval.',
 };
+
+function recordedStepRows(analysis: AnalysisResponse): Array<Array<string>> {
+  const workflow = analysis.parsed.workflows[0];
+  if (!workflow) return [['No script steps found', '', '']];
+  const navigationRows = (workflow.navigation ?? []).map((url) => ['Open page', url, 'Recorded navigation']);
+  const actionRows = workflow.actions.map((action) => [
+    actionLabel(action),
+    action.locator?.raw ?? 'No locator detected',
+    actionDetail(action),
+  ]);
+  const assertionRows = workflow.assertions.map((assertion) => [
+    `Check ${humanize(assertion.kind)}`,
+    assertion.target,
+    assertion.expected ? `Expected: ${assertion.expected}` : 'Recorded assertion',
+  ]);
+  return [...navigationRows, ...actionRows, ...assertionRows];
+}
+
+function actionLabel(action: AnalysisResponse['parsed']['workflows'][number]['actions'][number]): string {
+  return humanize(action.kind);
+}
+
+function actionDetail(action: AnalysisResponse['parsed']['workflows'][number]['actions'][number]): string {
+  if (!action.value) return 'Recorded action';
+  if (action.kind === 'fill' && /pass(word)?|secret/i.test(action.locator?.value ?? ''))
+    return 'Enters text in a password field (value hidden)';
+  return `${humanize(action.kind)} value: ${action.value}`;
+}
+
+function humanize(value: string): string {
+  return value.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (letter) => letter.toUpperCase());
+}
 
 function collectPatterns(analysis: AnalysisResponse): string[] {
   const haystack = [

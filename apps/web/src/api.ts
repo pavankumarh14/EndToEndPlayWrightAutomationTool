@@ -110,7 +110,20 @@ export function startGitHubLogin(): Promise<{ started: boolean; message: string 
 }
 
 export interface AnalysisResponse {
-  parsed: { workflows: Array<{ name: string; intent: string; actions: unknown[]; assertions: unknown[] }> };
+  parsed: {
+    workflows: Array<{
+      name: string;
+      intent: string;
+      navigation?: string[];
+      actions: Array<{
+        kind: string;
+        value?: string;
+        line?: number;
+        locator?: { raw: string; value: string; strategy: string };
+      }>;
+      assertions: Array<{ kind: string; target: string; expected?: string; line?: number }>;
+    }>;
+  };
   confidence: {
     score: number;
     band: string;

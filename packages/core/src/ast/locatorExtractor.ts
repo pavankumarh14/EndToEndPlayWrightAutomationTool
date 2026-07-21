@@ -6,8 +6,11 @@ const locatorPatterns: Array<{ strategy: LocatorModel['strategy']; pattern: RegE
   { strategy: 'placeholder', pattern: /getByPlaceholder\(([^)]*)\)/g, rank: 90 },
   { strategy: 'text', pattern: /getByText\(([^)]*)\)/g, rank: 82 },
   { strategy: 'testId', pattern: /getByTestId\(([^)]*)\)/g, rank: 76 },
-  { strategy: 'css', pattern: /locator\((['"`][^'"`]+['"`])\)/g, rank: 45 },
-  { strategy: 'xpath', pattern: /locator\((['"`](?:xpath=)?\/\/[^'"`]+['"`])\)/g, rank: 20 }
+  // Codegen commonly records data-test selectors such as
+  // locator('[data-test="username"]'). The selector can contain the other
+  // quote type, so capture the opening quote and its matching close quote.
+  { strategy: 'css', pattern: /locator\(\s*(['"`])([\s\S]*?)\1\s*\)/g, rank: 45 },
+  { strategy: 'xpath', pattern: /locator\(\s*(['"`])((?:xpath=)?\/\/[\s\S]*?)\1\s*\)/g, rank: 20 }
 ];
 
 export function extractLocators(source: string, filePath?: string): LocatorModel[] {
@@ -16,7 +19,7 @@ export function extractLocators(source: string, filePath?: string): LocatorModel
   for (const { strategy, pattern, rank } of locatorPatterns) {
     for (const match of source.matchAll(pattern)) {
       const raw = match[0];
-      const value = stripQuotes(match[1] ?? '');
+      const value = stripQuotes(match[2] ?? match[1] ?? '');
       const warnings = getLocatorWarnings(strategy, value);
       locators.push({
         id: `${filePath ?? 'upload'}:${match.index ?? 0}:${strategy}`,

@@ -5,17 +5,25 @@ export function generatePageObject(workflow: WorkflowModel, pageName = toPascal(
   const businessMethod = toCamel(workflow.name);
   const verificationMethod = `verify${toPascal(workflow.name)}`;
   const locatedActions = workflow.actions.filter((action) => action.locator);
-  const locatorLines = locatedActions
-    .map((action, index) => {
-      const locator = action.locator!;
-      return `  readonly ${action.kind}${index + 1} = this.page.${locator.raw};`;
+  const locators = [...new Map(locatedActions.map((action) => [action.locator!.raw, action.locator!])).values()];
+  const locatorNames = new Map<string, string>();
+  const usedLocatorNames = new Map<string, number>();
+  locators.forEach((locator) => {
+    const baseName = locatorPropertyName(locator.value);
+    const occurrence = (usedLocatorNames.get(baseName) ?? 0) + 1;
+    usedLocatorNames.set(baseName, occurrence);
+    locatorNames.set(locator.raw, occurrence === 1 ? baseName : `${baseName}${occurrence}`);
+  });
+  const locatorLines = locators
+    .map((locator) => {
+      return `  readonly ${locatorNames.get(locator.raw)} = this.page.${locator.raw};`;
     })
     .join('\n');
 
   const navigationLines = workflow.navigation.map((url) => `    await this.page.goto(${JSON.stringify(url)});`);
   const actionLines = locatedActions.map(
-    (action, index) =>
-      `    await this.${action.kind}${index + 1}.${action.kind}(${action.value ? JSON.stringify(action.value) : ''});`
+    (action) =>
+      `    await this.${locatorNames.get(action.locator!.raw)}.${action.kind}(${action.value ? JSON.stringify(action.value) : ''});`
   );
 
   return `import { expect, type Page } from '@playwright/test';
@@ -97,4 +105,12 @@ function toCamel(value: string): string {
 
 function toPageReference(target: string): string {
   return target.replace(/^page\./, 'this.page.');
+}
+
+function locatorPropertyName(value: string): string {
+  const selectorValue = value
+    .replace(/\[data-(?:test|testid)=['"]?([^'"\]]+)['"]?\]/i, '$1')
+    .replace(/[^a-zA-Z0-9]+/g, ' ')
+    .trim();
+  return toCamel(selectorValue) || 'recordedElement';
 }
