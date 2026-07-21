@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="390" viewBox="0 0 1200 390" role="img" aria-labelledby="title desc">
+  <title id="title">Test failure guidance flow</title>
+  <desc id="desc">A left-to-right flow from running tests to reviewing deterministic failure guidance and optional AI review.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#167d74"/></marker>
+    <style>text{font-family:Arial,sans-serif;fill:#1e293b}.title{font-size:21px;font-weight:700}.label{font-size:16px;font-weight:700}.body{font-size:13px;fill:#52647d}.box{fill:#fff;stroke:#cbd5e1;stroke-width:2}.accent{fill:#e9f8f5;stroke:#167d74;stroke-width:2}.line{stroke:#167d74;stroke-width:3;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1200" height="390" fill="#f8fafc" rx="16"/>
+  <text x="48" y="55" class="title">Test failure guidance</text>
+  <rect x="48" y="105" width="200" height="140" rx="12" class="box"/>
+  <text x="72" y="143" class="label">1. Run tests</text><text x="72" y="173" class="body">Run approved functional tests</text><text x="72" y="193" class="body">and optional accessibility tests.</text>
+  <line x1="248" y1="175" x2="310" y2="175" class="line"/>
+  <rect x="312" y="105" width="240" height="140" rx="12" class="accent"/>
+  <text x="336" y="143" class="label">2. Inspect failure</text><text x="336" y="173" class="body">Collect Playwright output,</text><text x="336" y="193" class="body">logs, screenshots, and traces.</text>
+  <line x1="552" y1="175" x2="614" y2="175" class="line"/>
+  <rect x="616" y="105" width="260" height="140" rx="12" class="box"/>
+  <text x="640" y="143" class="label">3. Local guidance</text><text x="640" y="173" class="body">Rules and project indexing find</text><text x="640" y="193" class="body">likely locators and reusable assets.</text>
+  <line x1="876" y1="175" x2="938" y2="175" class="line"/>
+  <rect x="940" y="105" width="210" height="140" rx="12" class="accent"/>
+  <text x="964" y="143" class="label">4. Review next step</text><text x="964" y="173" class="body">Optional AI may refine guidance.</text><text x="964" y="193" class="body">A person decides any change.</text>
+  <text x="48" y="315" class="body">Provider errors or token limits never stop deterministic failure guidance; they only skip the optional AI refinement.</text>
+</svg>
