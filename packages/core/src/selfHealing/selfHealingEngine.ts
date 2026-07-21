@@ -14,6 +14,9 @@ export interface HealingProposal {
   confidence: ConfidenceDecision;
   proposedFix: string;
   diff?: string;
+  analysisSource: 'deterministic' | 'ai-assisted' | 'ai-fallback';
+  nextAction: string;
+  aiMessage?: string;
 }
 
 export class SelfHealingEngine {
@@ -30,12 +33,18 @@ export class SelfHealingEngine {
         subject: 'Self-healing proposal',
         deterministicScore: score,
         evidence: [evidence.logs.slice(0, 500)],
-        retrievedAssetsUsed: [evidence.tracePath, evidence.screenshotPath].filter(Boolean) as string[],
-        similarityMetrics: { locatorFailure: locatorFailure ? 100 : 0 }
+        retrievedAssetsUsed: [evidence.tracePath, evidence.screenshotPath].filter(
+          Boolean,
+        ) as string[],
+        similarityMetrics: { locatorFailure: locatorFailure ? 100 : 0 },
       }),
       proposedFix: locatorFailure
         ? 'Run locator governance search, prefer role/label replacements, and submit diff for approval.'
-        : 'Collect trace, DOM snapshot, and owner review before changing framework code.'
+        : 'Review the trace and run output before changing framework code.',
+      analysisSource: 'deterministic',
+      nextAction: locatorFailure
+        ? 'Update the locator only after reviewing the target page, then run the selected test again.'
+        : 'Review the failure artifacts. If a configured AI provider is available, the platform will request a limited root-cause review for this ambiguous failure.',
     };
   }
 }
