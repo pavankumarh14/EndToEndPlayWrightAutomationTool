@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T08:05:25.683Z",
+  "generatedAt": "2026-07-21T08:13:18.984Z",
   "repositoryRoot": "/Users/pavankumarh/Documents/EndToEndPlayWrightAutomationTool",
   "tests": [
     {
@@ -196,7 +196,7 @@
     "estimatedTokensBeforeRetrieval": 1184,
     "estimatedTokensAfterRetrieval": 28,
     "tokenReductionPercent": 97.64,
-    "processingTimeMs": 10,
+    "processingTimeMs": 12,
     "aiUsageBreakdown": {}
   }
 }

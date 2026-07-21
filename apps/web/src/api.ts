@@ -2,7 +2,7 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
 export async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(`${API_URL}${path}`);
-  if (!response.ok) throw new Error(await response.text());
+  if (!response.ok) throw new Error(await responseError(response));
   return response.json() as Promise<T>;
 }
 
@@ -12,8 +12,20 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body ?? {})
   });
-  if (!response.ok) throw new Error(await response.text());
+  if (!response.ok) throw new Error(await responseError(response));
   return response.json() as Promise<T>;
+}
+
+async function responseError(response: Response): Promise<string> {
+  const body = await response.text();
+  try {
+    const parsed = JSON.parse(body) as { message?: unknown; error?: unknown; detail?: unknown };
+    const message = parsed.message ?? parsed.error ?? parsed.detail;
+    if (typeof message === 'string') return message;
+  } catch {
+    // Keep the response body as the fallback message.
+  }
+  return body || `Request failed with status ${response.status}.`;
 }
 
 export function uploadScript(

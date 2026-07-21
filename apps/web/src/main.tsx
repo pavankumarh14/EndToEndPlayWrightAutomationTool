@@ -359,6 +359,16 @@ function App() {
     setStagedProposals((current) => current.filter((proposal) => proposal.id !== id));
   }
 
+  function clearStagedProposals() {
+    setStagedProposals([]);
+    setNotice({
+      tone: 'info',
+      title: 'PR batch cleared',
+      message: 'No staged proposals remain. No files were written and no pull request was created.',
+      visibleOn: ['Create Test', 'Review & Approve']
+    });
+  }
+
   async function beginRecording() {
     setBusy(true);
     setError(undefined);
@@ -503,6 +513,7 @@ function App() {
 
   async function sendFeedback(action: 'accepted' | 'rejected' | 'modified') {
     if (!analysis) return;
+    setError(undefined);
     await apiPost('/api/analysis/feedback', {
       source: 'user-suggestion',
       action,
@@ -525,13 +536,27 @@ function App() {
       navigate('Create Test');
       return;
     }
+    if (action === 'rejected') {
+      const rejectedFiles = analysis.proposedChange.files.map((file) => file.path);
+      const remainingStagedProposals = stagedProposals.filter((proposal) => !sameFilePaths(proposal.files, rejectedFiles));
+      setStagedProposals(remainingStagedProposals);
+      setAnalysis(undefined);
+      setSource('');
+      setNotice({
+        tone: 'warning',
+        title: 'Proposal rejected',
+        message: remainingStagedProposals.length
+          ? `The rejected proposal was removed. ${workflowCountLabel(remainingStagedProposals.length)} remains in your PR batch; create another script or return to Review & Approve to manage the batch.`
+          : 'The rejection was recorded for learning. No files were written; create or analyze another script.',
+        visibleOn: ['Create Test', 'Review & Approve']
+      });
+      navigate('Create Test');
+      return;
+    }
     setNotice({
-      tone: action === 'accepted' ? 'success' : 'warning',
-      title: action === 'accepted' ? 'Feedback accepted' : 'Proposal rejected',
-      message:
-        action === 'accepted'
-          ? 'The decision was recorded for learning. Use Approve when you are ready to write files to the repository.'
-          : 'The rejection was recorded for learning. No files were written; edit the upload or analyze a different script.',
+      tone: 'success',
+      title: 'Feedback accepted',
+      message: 'The decision was recorded for learning. Use Approve when you are ready to write files to the repository.',
       visibleOn: ['Review & Approve', 'Learning Dashboard']
     });
   }
@@ -616,7 +641,7 @@ function App() {
                 </label>
               </>
             )}
-            {active === 'Review & Approve' && <button onClick={applyChange} disabled={busy || (!analysis && !stagedProposals.length) || !batchCanBeApproved(stagedProposals, analysis)}><CheckCircle2 size={16} />Approve {stagedProposals.length ? `${stagedProposals.length + (analysis ? 1 : 0)} workflows` : 'files'}</button>}
+            {active === 'Review & Approve' && <button onClick={applyChange} disabled={busy || (!analysis && !stagedProposals.length) || !batchCanBeApproved(stagedProposals, analysis)}><CheckCircle2 size={16} />Approve {stagedProposals.length ? workflowCountLabel(stagedProposals.length + (analysis ? 1 : 0)) : 'files'}</button>}
           </div>
         </header>
         {error && <div className="alert">{error}</div>}
@@ -652,6 +677,7 @@ function App() {
               stageCurrentProposal={stageCurrentProposal}
               stagedProposals={stagedProposals}
               removeStagedProposal={removeStagedProposal}
+              clearStagedProposals={clearStagedProposals}
               busy={busy}
             />
           )}
@@ -934,6 +960,7 @@ function Confidence({
   stageCurrentProposal,
   stagedProposals,
   removeStagedProposal,
+  clearStagedProposals,
   busy
 }: {
   analysis?: AnalysisResponse;
@@ -943,13 +970,14 @@ function Confidence({
   stageCurrentProposal: () => void;
   stagedProposals: StagedProposal[];
   removeStagedProposal: (id: string) => void;
+  clearStagedProposals: () => void;
   busy: boolean;
 }) {
   if (!analysis && !stagedProposals.length) return <Empty label="Analyze a script to review it, or stage several reviewed scripts here as one pull-request batch." />;
   if (!analysis) {
     return (
       <div className="stack">
-        <BatchPanel proposals={stagedProposals} remove={removeStagedProposal} approve={approve} busy={busy} showApprove />
+        <BatchPanel proposals={stagedProposals} remove={removeStagedProposal} clear={clearStagedProposals} approve={approve} busy={busy} showApprove />
         <div className="panel">
           <h2>Ready for the next workflow</h2>
           <p className="helper-text">Your staged tests are not written yet. Create and analyze another script, or approve this batch to write all staged files and create one draft pull request.</p>
@@ -987,7 +1015,7 @@ function Confidence({
         </div>
       </div>
       <div className="stack">
-        {stagedProposals.length > 0 && <BatchPanel proposals={stagedProposals} remove={removeStagedProposal} approve={approve} busy={busy} showApprove={false} />}
+        {stagedProposals.length > 0 && <BatchPanel proposals={stagedProposals} remove={removeStagedProposal} clear={clearStagedProposals} approve={approve} busy={busy} showApprove={false} />}
         <div className="panel wide">
         <h2>What we checked</h2>
         <p className="helper-text">These checks help you decide whether the generated files are safe to review and approve.</p>
@@ -1058,9 +1086,10 @@ function Confidence({
   );
 }
 
-function BatchPanel({ proposals, remove, approve, busy, showApprove }: {
+function BatchPanel({ proposals, remove, clear, approve, busy, showApprove }: {
   proposals: StagedProposal[];
   remove: (id: string) => void;
+  clear: () => void;
   approve: () => Promise<void>;
   busy: boolean;
   showApprove: boolean;
@@ -1069,7 +1098,7 @@ function BatchPanel({ proposals, remove, approve, busy, showApprove }: {
   const blocked = proposals.filter((proposal) => !proposal.approvalAllowed);
   return (
     <div className="panel pr-batch">
-      <h2>Staged for batch — {proposals.length} {proposals.length === 1 ? 'workflow' : 'workflows'}</h2>
+      <div className="section-header"><h2>Staged for batch — {workflowCountLabel(proposals.length)}</h2><button className="danger" onClick={clear} disabled={busy}>Clear batch</button></div>
       <p className="helper-text">These reviewed proposals will be written together and included in one draft pull request. They are not in the repository yet.</p>
       <div className="batch-items">
         {proposals.map((proposal) => (
@@ -1452,6 +1481,16 @@ function approvalReason(analysis: AnalysisResponse): string {
 function batchCanBeApproved(stagedProposals: StagedProposal[], analysis?: AnalysisResponse): boolean {
   const currentAllowed = analysis ? canApproveAnalysis(analysis) : true;
   return currentAllowed && stagedProposals.every((proposal) => proposal.approvalAllowed);
+}
+
+function sameFilePaths(files: Array<{ path: string }>, paths: string[]): boolean {
+  const left = [...new Set(files.map((file) => file.path))].sort();
+  const right = [...new Set(paths)].sort();
+  return left.length === right.length && left.every((path, index) => path === right[index]);
+}
+
+function workflowCountLabel(count: number): string {
+  return `${count} ${count === 1 ? 'workflow' : 'workflows'}`;
 }
 
 function pageDescription(active: string, analysis?: AnalysisResponse, execution?: any): string {

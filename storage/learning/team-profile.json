@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T08:05:25.686Z",
+  "generatedAt": "2026-07-21T08:07:18.154Z",
   "preferredLocatorStrategy": "locator:getByText",
   "preferredAssertionStyle": "assertion:expect(locator).toBeVisible",
   "preferredPageObjectPattern": "page-object:action-plus-verification-methods",
@@ -8,27 +8,27 @@
   "acceptedPatterns": [
     {
       "pattern": "page-object:action-plus-verification-methods",
-      "count": 3,
+      "count": 5,
       "acceptanceRate": 100
     },
     {
       "pattern": "test:business-workflow-only",
-      "count": 3,
+      "count": 5,
       "acceptanceRate": 100
     },
     {
       "pattern": "accessibility:wcag-2.1-aa",
-      "count": 3,
+      "count": 5,
       "acceptanceRate": 100
     },
     {
       "pattern": "locator:getByText",
-      "count": 3,
+      "count": 5,
       "acceptanceRate": 100
     },
     {
       "pattern": "assertion:expect(locator).toBeVisible",
-      "count": 3,
+      "count": 5,
       "acceptanceRate": 100
     },
     {
@@ -54,7 +54,7 @@
   ],
   "governanceExceptions": [],
   "historicalOutcomes": {
-    "accepted": 1,
+    "accepted": 2,
     "rejected": 0,
     "modified": 1,
     "successfulExecutions": 0,
