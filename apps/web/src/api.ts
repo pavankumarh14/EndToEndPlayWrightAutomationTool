@@ -1,5 +1,9 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
+export function testArtifactUrl(path: string): string {
+  return `${API_URL}/api/execution/artifact?path=${encodeURIComponent(path)}`;
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(`${API_URL}${path}`);
   if (!response.ok) throw new Error(await responseError(response));

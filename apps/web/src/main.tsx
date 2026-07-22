@@ -30,6 +30,7 @@ import {
   startGitHubLogin,
   startRecording,
   stopRecording,
+  testArtifactUrl,
   uploadScript,
 } from './api';
 import './styles/app.css';
@@ -1925,12 +1926,58 @@ function Execution({
             Click Run tests to show the exact files selected for this run.
           </p>
         ) : null}
+        {execution && !execution.result.passed && <FailureArtifacts execution={execution} />}
         {execution && !execution.result.passed && <Healing execution={execution} />}
         <pre>{installSummary}</pre>
         <pre>
           {execution?.result.logs ??
             'Run tests to collect logs, screenshots, videos, traces, and root cause analysis.'}
         </pre>
+      </div>
+    </div>
+  );
+}
+
+function FailureArtifacts({ execution }: { execution: any }) {
+  const files = (execution?.result?.artifacts?.files ?? []) as string[];
+  if (!files.length) {
+    return (
+      <p className="helper-text">
+        No browser artifact was produced for this failure. Review the run output below.
+      </p>
+    );
+  }
+  return (
+    <div className="failure-artifacts">
+      <h2 className="section-title">Failure artifacts</h2>
+      <p className="helper-text">
+        These files were captured by Playwright for this failed run. They stay local to this project.
+      </p>
+      <div className="artifact-grid">
+        {files.map((file) => {
+          const url = testArtifactUrl(file);
+          if (/\.png$/i.test(file)) {
+            return (
+              <figure className="artifact-card" key={file}>
+                <img src={url} alt={`Failure screenshot: ${file}`} />
+                <figcaption>{file}</figcaption>
+              </figure>
+            );
+          }
+          if (/\.webm$/i.test(file)) {
+            return (
+              <figure className="artifact-card" key={file}>
+                <video controls preload="metadata" src={url} />
+                <figcaption>{file}</figcaption>
+              </figure>
+            );
+          }
+          return (
+            <a className="artifact-link" href={url} target="_blank" rel="noreferrer" key={file}>
+              {file.endsWith('.zip') ? 'Download Playwright trace' : 'Open failure context'}: {file}
+            </a>
+          );
+        })}
       </div>
     </div>
   );

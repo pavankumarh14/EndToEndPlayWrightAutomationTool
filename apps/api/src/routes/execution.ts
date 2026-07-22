@@ -1,3 +1,5 @@
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import { Router } from 'express';
 import { ExecutionService, GeminiClient, OllamaClient, SelfHealingEngine } from '@platform/core';
 import { config, repositoryRoot } from '../config.js';
@@ -34,11 +36,60 @@ executionRouter.post('/run', async (req, res, next) => {
     const healing = result.passed
       ? undefined
       : await analyzeFailure(result.logs, result.artifacts.tracesPath);
-    res.json({ result, healing });
+    const failureArtifacts = result.passed ? [] : await findFailureArtifacts(result.logs);
+    res.json({
+      result: {
+        ...result,
+        artifacts: { ...result.artifacts, files: failureArtifacts },
+      },
+      healing,
+    });
   } catch (error) {
     next(error);
   }
 });
+
+executionRouter.get('/artifact', async (req, res, next) => {
+  try {
+    const relativePath = typeof req.query.path === 'string'
+      ? req.query.path.replace(/\\/g, '/').replace(/^\.\//, '')
+      : '';
+    if (
+      !relativePath.startsWith('test-results/') ||
+      !/\.(png|webm|zip|md)$/i.test(relativePath)
+    ) {
+      return res.status(400).json({ message: 'Invalid test artifact path.' });
+    }
+    const absolutePath = path.resolve(repositoryRoot, relativePath);
+    const allowedRoot = `${path.resolve(repositoryRoot, 'test-results')}${path.sep}`;
+    if (!absolutePath.startsWith(allowedRoot)) {
+      return res.status(400).json({ message: 'Invalid test artifact path.' });
+    }
+    await fs.access(absolutePath);
+    res.sendFile(absolutePath);
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function findFailureArtifacts(logs: string): Promise<string[]> {
+  const candidates = [...logs.matchAll(/(test-results\/[\w./-]+\.(?:png|webm|zip|md))/g)]
+    .map((match) => match[1])
+    .filter((value, index, values) => values.indexOf(value) === index);
+  const found: string[] = [];
+  for (const candidate of candidates) {
+    const absolutePath = path.resolve(repositoryRoot, candidate);
+    const allowedRoot = `${path.resolve(repositoryRoot, 'test-results')}${path.sep}`;
+    if (!absolutePath.startsWith(allowedRoot)) continue;
+    try {
+      await fs.access(absolutePath);
+      found.push(candidate);
+    } catch {
+      // Playwright can omit an artifact named in a partial failure log.
+    }
+  }
+  return found;
+}
 
 async function analyzeFailure(logs: string, tracePath: string) {
   const healing = new SelfHealingEngine().propose({ logs, tracePath });
