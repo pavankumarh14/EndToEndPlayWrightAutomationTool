@@ -174,10 +174,10 @@ function App() {
   }, [recording?.id, recording?.status, recordingDirty]);
 
   useEffect(() => {
-    if (!notice || notice.tone !== 'success') return;
+    if (!notice) return;
     const timer = window.setTimeout(() => {
       setNotice((current) => (current === notice ? undefined : current));
-    }, 60_000);
+    }, 20_000);
     return () => window.clearTimeout(timer);
   }, [notice]);
 
