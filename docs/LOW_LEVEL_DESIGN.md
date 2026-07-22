@@ -47,7 +47,7 @@ Current implementation provides deterministic extractors in `packages/core/src/a
 | GET | `/api/index` | Build and return current framework index |
 | POST | `/api/index/rebuild` | Force deterministic re-index |
 | GET | `/api/governance/report` | Repository governance report |
-| POST | `/api/execution/run` | Run Playwright and return healing proposal on failure |
+| POST | `/api/execution/run` | Run approved files, selected files, or a temporary proposed-file overlay; return logs, artifacts, and healing guidance on failure |
 | POST | `/api/recording/sessions` | Start local Playwright Codegen from a URL |
 | GET | `/api/recording/sessions/:id` | Read recording status/source |
 | POST | `/api/recording/sessions/:id/stop` | Stop Codegen recording |
@@ -96,3 +96,11 @@ storage/
 ## Approval Flow
 
 The API requires explicit approval in `/api/analysis/apply`. The web console can hold multiple reviewed proposals in a browser-local PR batch; none are written until the user approves the batch. When GitHub prerequisites are met, the approved file set is committed on an isolated automation branch, pushed, and opened or updated as a draft PR. The Git service uses a Studio marker to find the existing draft PR and has a compatibility fallback only when exactly one legacy automation draft PR is unambiguous. The API returns the local checkout to the default branch after the operation. Production hardening can add role-based approval and immutable audit records.
+
+## Execution and Self-Healing Flow
+
+`/api/execution/run` can run committed tests or temporarily overlay the files from the current reviewed proposal. The overlay is restored (or deleted when it was newly created) in a `finally` block, so pre-approval execution does not leave generated files in the working tree.
+
+The console reports the selected files and elapsed time while Playwright is running. A failed run returns Playwright logs plus safe links to available screenshots, video, trace ZIPs, and error context under `test-results/`.
+
+Self-healing is guidance only. Deterministic triage extracts a failed locator when the output contains one and recommends stable role, label, placeholder, or test-id alternatives. It also extracts Axe rule failures and returns rule-specific remediation guidance, including accessible-name, label, button-name, image-alt, and WCAG color-contrast suggestions. Optional AI receives only scrubbed failure output for an ambiguous root-cause summary. It never edits files, invents an unverified locator, or reruns tests automatically.

@@ -17,6 +17,9 @@ The repository is designed around one core rule: Git is the source of truth. Gen
 - Records approved feedback and outcomes under `storage/learning` to adapt future recommendations.
 - Provides a React console and REST API for recording, analysis, approval, execution, failure guidance, learning data, and GitHub pull requests.
 - Generates accessibility proposals that scan the initial page and recorded post-interaction state with Axe WCAG 2.0/2.1/2.2 A and AA tags, including automated text color-contrast coverage and attached Axe JSON results.
+- Lets reviewers test a generated proposal temporarily before approval, without leaving proposed files in the working tree.
+- Shows live Run Tests progress (spinner, elapsed time, and selected test files), then keeps Playwright logs and failure artifacts in the UI.
+- Provides failure-specific self-healing guidance: locator failures recommend stable role/label/test-id strategies, while Axe failures explain the violated rule, affected element, WCAG impact, and a smallest-safe remediation example. Optional AI can add a concise root-cause review; local analysis remains available if AI is unavailable or rate-limited.
 
 ## How Codex and GPT-5.6 Were Used
 
@@ -112,6 +115,14 @@ The top action bar exposes the primary actions:
 - `Analyze` sends the current upload to `/api/analysis/upload`.
 - `Run` starts Playwright execution through `/api/execution/run`.
 - `Approve files` writes only the reviewed proposal to the repository. When GitHub is configured, it commits those approved files on an `automation/...` branch, pushes it, creates or updates a draft pull request, and returns the local checkout to the default branch.
+
+### Test execution and failure guidance
+
+**Run Tests** can run the default approved suite, one approved test from the current branch, or the current reviewed proposal before approval. Proposal files are written only to a temporary overlay for the duration of that run and are removed/restored afterward.
+
+When a run starts, the UI displays a spinner, elapsed time, and the selected files. The browser developer console and API terminal also log run start and completion. When a test fails, the result view shows available screenshots, videos, traces, error context, and full Playwright output.
+
+Self-healing is advisory: it never edits code or reruns tests on its own. Local parsing first identifies the failed locator or Axe rule. Locator guidance recommends an evidence-based stable alternative rather than inventing an unverified selector. Axe guidance includes specific fixes for common failures such as missing labels/names, button names, image alternatives, and color contrast (normally **4.5:1** for normal text and **3:1** for large text). Optional configured AI receives only a scrubbed failure summary for ambiguous root-cause review. If its provider is unavailable, quota-limited, or rate-limited, the deterministic local guidance remains available.
 
 To create pull requests, install and authenticate GitHub CLI on the machine running the API:
 
@@ -217,7 +228,7 @@ npm run index        # Build and persist the framework index
 6. Use **Approve batch** when all staged workflows are correct. You can remove a staged workflow before approval.
 7. The API writes only approved files into `pages/`, `tests/functional/`, and `tests/accessibility/`, then rebuilds `storage/indexes/framework-index.json`.
 8. If GitHub is configured, approval creates or updates one draft pull request containing only those approved files.
-9. Run approved tests from **Run Tests** or with `npm run test:e2e`.
+9. Before approval, optionally choose **Current reviewed proposal** in **Run Tests** to validate generated files temporarily. Then run approved tests from **Run Tests** or with `npm run test:e2e`.
 
 ## REST API
 
@@ -232,7 +243,7 @@ The API is registered under `/api`.
 | `GET` | `/api/index` | Build and return the current framework index |
 | `POST` | `/api/index/rebuild` | Force a deterministic re-index |
 | `GET` | `/api/governance/report` | Return repository governance findings |
-| `POST` | `/api/execution/run` | Run Playwright and return a self-healing proposal on failure |
+| `POST` | `/api/execution/run` | Run approved tests, a selected test, or temporary proposed files; returns logs, artifacts, and self-healing guidance on failure |
 | `POST` | `/api/recording/sessions` | Start a local Playwright Codegen session from a URL |
 | `GET` | `/api/recording/sessions/:id` | Read Codegen recording status and generated source |
 | `POST` | `/api/recording/sessions/:id/stop` | Stop the local Codegen session |
@@ -286,7 +297,7 @@ Confidence is a review recommendation, not permission to change files automatica
 - `storage/learning/team-profile.json` stores the derived team automation profile.
 - Uploaded files may be staged under `storage/uploads`.
 
-These files are intentionally visible so the platform remains auditable.
+These files are local runtime state and are intentionally ignored by Git. They are visible for local auditing, but should not be committed to `main`; the approved generated test and page-object files are the reviewable project changes.
 
 ## Documentation
 

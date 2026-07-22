@@ -4,7 +4,7 @@ const configuredRetries = Number(process.env.PLAYWRIGHT_RETRIES);
 const retries = Number.isInteger(configuredRetries) && configuredRetries >= 0
   ? configuredRetries
   : process.env.CI
-    ? 2
+    ? 0
     : 0;
 
 export default defineConfig({
