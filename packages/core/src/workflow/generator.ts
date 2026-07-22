@@ -74,17 +74,43 @@ test('${workflow.name}', async ({ page }) => {
 `;
 }
 
-export function generateAccessibilityTest(workflow: WorkflowModel): string {
-  return `import { test, expect } from '@playwright/test';
+export function generateAccessibilityTest(workflow: WorkflowModel, pageClassName?: string): string {
+  const businessMethod = toCamel(workflow.name);
+  const verificationMethod = `verify${toPascal(workflow.name)}`;
+  const fixtureName = pageClassName
+    ? pageClassName.charAt(0).toLowerCase() + pageClassName.slice(1)
+    : undefined;
+  const initialNavigation = workflow.navigation[0]
+    ? `  await page.goto(${JSON.stringify(workflow.navigation[0])});\n  await expectAccessible(page, testInfo, 'initial-page');`
+    : `  await expectAccessible(page, testInfo, 'initial-page');`;
+  const interactionScan = pageClassName
+    ? `
+  const ${fixtureName} = new ${pageClassName}(page);
+  await ${fixtureName}.${businessMethod}();
+  await ${fixtureName}.${verificationMethod}();
+  await expectAccessible(page, testInfo, 'after-recorded-workflow');`
+    : '';
+  return `import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+${pageClassName ? `import { ${pageClassName} } from '../../pages/${pageClassName}';\n` : ''}
+test('${workflow.name} accessibility', async ({ page }, testInfo) => {
+${initialNavigation}${interactionScan}
+});
 
-test('${workflow.name} accessibility', async ({ page }) => {
-  const accessibilityScanResults = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+async function expectAccessible(page: Page, testInfo: TestInfo, scanName: string): Promise<void> {
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'])
     .analyze();
 
-  expect(accessibilityScanResults.violations).toEqual([]);
-});
+  await testInfo.attach(\`${'${scanName}'}-axe-results.json\`, {
+    body: JSON.stringify(results, null, 2),
+    contentType: 'application/json'
+  });
+
+  // Axe includes automated WCAG text color-contrast coverage. Non-text contrast,
+  // gradients, canvas, and image-based controls need explicit product-specific checks.
+  expect(results.violations, \`Axe violations in ${'${scanName}'}\`).toEqual([]);
+}
 `;
 }
 

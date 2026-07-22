@@ -6,7 +6,7 @@ export interface AccessibilityGuidance {
 
 export function accessibilityGuidance(): AccessibilityGuidance {
   return {
-    standards: ['WCAG 2.1 A', 'WCAG 2.1 AA'],
+    standards: ['WCAG 2.0 A', 'WCAG 2.0 AA', 'WCAG 2.1 A', 'WCAG 2.1 AA', 'WCAG 2.2 A', 'WCAG 2.2 AA'],
     checks: [
       'Color contrast',
       'Keyboard accessibility',

@@ -16,6 +16,7 @@ The repository is designed around one core rule: Git is the source of truth. Gen
 - Optionally calls a configured AI provider (Gemini or Ollama today) for a narrow semantic decision without sending raw repository code. If it is unavailable or rate-limited, analysis continues with the closest safe local AST/index result and explains the fallback.
 - Records approved feedback and outcomes under `storage/learning` to adapt future recommendations.
 - Provides a React console and REST API for recording, analysis, approval, execution, failure guidance, learning data, and GitHub pull requests.
+- Generates accessibility proposals that scan the initial page and recorded post-interaction state with Axe WCAG 2.0/2.1/2.2 A and AA tags, including automated text color-contrast coverage and attached Axe JSON results.
 
 ## How Codex and GPT-5.6 Were Used
 

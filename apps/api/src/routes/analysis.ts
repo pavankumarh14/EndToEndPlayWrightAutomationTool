@@ -104,7 +104,7 @@ analysisRouter.post('/upload', upload.single('script'), async (req, res, next) =
           ]),
       {
         path: `tests/accessibility/${toKebab(workflow.name)}.a11y.spec.ts`,
-        content: generateAccessibilityTest(workflow),
+        content: generateAccessibilityTest(workflow, reusablePageObject ? undefined : pageClassName),
         action: 'create' as const
       }
     ];
