@@ -379,6 +379,12 @@ h2 {
   width: 100%;
 }
 
+/* Keep the review decision visible while the longer evidence column scrolls. */
+.review-summary {
+  position: sticky;
+  top: 16px;
+}
+
 .section-header {
   display: flex;
   align-items: flex-start;
@@ -754,6 +760,10 @@ pre {
   .intake-options {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .review-summary {
+    position: static;
   }
 
   .guide-steps {

@@ -47,6 +47,11 @@ export class ExecutionService {
 
   async runPlaywright(options: PlaywrightRunOptions = {}): Promise<ExecutionResult> {
     const testFiles = await selectedTestFiles(this.cwd, options);
+    if (!testFiles.length) {
+      throw new Error(
+        'No approved tests are available on the current branch. Analyze a script and choose “Current reviewed proposal” to test it before approval.',
+      );
+    }
     return this.runTestFiles(testFiles, options);
   }
 

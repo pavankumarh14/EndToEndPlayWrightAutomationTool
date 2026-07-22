@@ -60,6 +60,7 @@ type StagedProposal = {
 };
 
 const batchStorageKey = 'playwright-automation-studio.pr-batch';
+const currentAnalysisStorageKey = 'playwright-automation-studio.current-analysis';
 const proposalPreviewSelection = '__current_reviewed_proposal__';
 
 const modules = [
@@ -98,7 +99,7 @@ function App() {
   const [recording, setRecording] = useState<RecordingSession | undefined>();
   const [recordingSource, setRecordingSource] = useState('');
   const [recordingDirty, setRecordingDirty] = useState(false);
-  const [analysis, setAnalysis] = useState<AnalysisResponse | undefined>();
+  const [analysis, setAnalysis] = useState<AnalysisResponse | undefined>(() => readCurrentAnalysis());
   const [stagedProposals, setStagedProposals] = useState<StagedProposal[]>(() =>
     readStagedProposals(),
   );
@@ -117,7 +118,9 @@ function App() {
   const [learning, setLearning] = useState<LearningDashboardResponse | undefined>();
   const [installMissingDependencies, setInstallMissingDependencies] = useState(false);
   const [runAccessibilityWithFunctional, setRunAccessibilityWithFunctional] = useState(true);
-  const [selectedTestFiles, setSelectedTestFiles] = useState<string[]>([]);
+  const [selectedTestFiles, setSelectedTestFiles] = useState<string[]>(() =>
+    readCurrentAnalysis() ? [proposalPreviewSelection] : [],
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<Notice | undefined>({
@@ -139,6 +142,15 @@ function App() {
     refreshGit();
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
+
+  useEffect(() => {
+    try {
+      if (analysis) window.sessionStorage.setItem(currentAnalysisStorageKey, JSON.stringify(analysis));
+      else window.sessionStorage.removeItem(currentAnalysisStorageKey);
+    } catch {
+      // The page still works if browser storage is unavailable.
+    }
+  }, [analysis]);
 
   useEffect(() => {
     if (!recording || recording.status !== 'running') return;
@@ -356,6 +368,7 @@ function App() {
         workflowName,
       );
       setAnalysis(result);
+      setSelectedTestFiles([proposalPreviewSelection]);
       setGovernance(result.governance);
       setNotice({
         tone: 'success',
@@ -1289,7 +1302,7 @@ function AssetList({
 function IndexDashboard({ index }: { index?: FrameworkIndex }) {
   return (
     <div className="workspace">
-      <div className="panel">
+      <div className="panel review-summary">
         <h2>Repository Index</h2>
         <Metric
           label="Generated"
@@ -1488,7 +1501,7 @@ function Confidence({
             ]}
           />
           <details className="technical-details">
-            <summary>View project-rule details</summary>
+            <summary>What project rules were checked</summary>
             {analysis.governance.violations.length ? (
               <Table
                 rows={analysis.governance.violations.map((violation) => [
@@ -1499,7 +1512,25 @@ function Confidence({
                 ])}
               />
             ) : (
-              <p className="helper-text">All project rules passed for this proposal.</p>
+              <Table
+                rows={[
+                  [
+                    'Approved folders',
+                    'Passed',
+                    'Generated files are only in pages, components, fixtures, utils, or the approved test folders.',
+                  ],
+                  [
+                    'File naming',
+                    'Passed',
+                    'Page objects and test files use this project’s naming conventions.',
+                  ],
+                  [
+                    'Test structure',
+                    'Passed',
+                    'Functional tests call page-object workflow methods instead of using raw locators directly.',
+                  ],
+                ]}
+              />
             )}
           </details>
           {hasPastExperience && (
@@ -2326,6 +2357,22 @@ function readStagedProposals(): StagedProposal[] {
     );
   } catch {
     return [];
+  }
+}
+
+function readCurrentAnalysis(): AnalysisResponse | undefined {
+  try {
+    const stored = window.sessionStorage.getItem(currentAnalysisStorageKey);
+    const parsed = stored ? JSON.parse(stored) : undefined;
+    if (
+      !parsed ||
+      !Array.isArray(parsed?.proposedChange?.files) ||
+      !Array.isArray(parsed?.parsed?.workflows)
+    )
+      return undefined;
+    return parsed as AnalysisResponse;
+  } catch {
+    return undefined;
   }
 }
 
