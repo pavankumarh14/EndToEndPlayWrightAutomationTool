@@ -2005,6 +2005,21 @@ function Healing({ execution }: { execution: any }) {
           </p>
           <p>{execution.healing.rootCause}</p>
           <pre>{execution.healing.proposedFix}</pre>
+          {execution.healing.findings?.length ? (
+            <>
+              <h3>Suggested repair</h3>
+              <Table
+                rows={execution.healing.findings.map((finding: any) => [
+                  `${finding.category} — ${finding.severity}`,
+                  finding.target ?? 'No specific target extracted',
+                  finding.recommendation,
+                ])}
+              />
+              {execution.healing.findings.map((finding: any, index: number) =>
+                finding.example ? <CodePanel key={index} title="Example application fix" code={finding.example} /> : null,
+              )}
+            </>
+          ) : null}
           <p className="helper-text">
             <strong>Next action:</strong> {execution.healing.nextAction}
           </p>

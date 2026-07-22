@@ -8,6 +8,8 @@ services:
         value: production
       - key: AI_PROVIDER
         value: none
+      - key: PLAYWRIGHT_RETRIES
+        value: "0"
     disk:
       name: studio-storage
       mountPath: /app/storage

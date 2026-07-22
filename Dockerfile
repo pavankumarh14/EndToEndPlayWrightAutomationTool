@@ -29,6 +29,7 @@ RUN npm run build \
 
 ENV NODE_ENV=production
 ENV CI=true
+ENV PLAYWRIGHT_RETRIES=0
 ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 EXPOSE 10000
 

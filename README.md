@@ -141,6 +141,7 @@ Codegen launches on the same desktop machine as the API. The generated script is
 | `OLLAMA_ENABLED` | `false` | Enables Ollama when `AI_PROVIDER` is not set |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL |
 | `OLLAMA_MODEL` | `llama3.1` | Ollama model used for semantic decisions |
+| `PLAYWRIGHT_RETRIES` | `2` in CI, otherwise `0` | Number of retries for a failed Playwright test; Render uses `0` to avoid duplicate empty retry videos |
 
 Example with Gemini enabled:
 
