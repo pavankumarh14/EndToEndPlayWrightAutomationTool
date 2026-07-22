@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.env
+.DS_Store
+coverage
+test-results
+playwright-report
+storage/uploads
+storage/codegen-sessions
+storage/runs
+storage/indexes/framework-index.json
+storage/learning/events.json
+storage/learning/team-profile.json

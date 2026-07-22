@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: playwright-automation-studio
+    runtime: docker
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AI_PROVIDER
+        value: none
+    disk:
+      name: studio-storage
+      mountPath: /app/storage
+      sizeGB: 1

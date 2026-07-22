@@ -69,6 +69,20 @@ Use `http://localhost:4000/api/health` to verify the backend is running. The API
 
 The web app reads `VITE_API_URL` and falls back to `http://localhost:4000`.
 
+## Deploy on Render (single frontend + backend service)
+
+This repository includes a single-service [Dockerfile](./Dockerfile) and [Render Blueprint](./render.yaml). The Docker image builds the React application, then the Express API serves both the UI at `/` and API routes under `/api`. It also installs Chromium for Playwright runs.
+
+1. Push the repository to GitHub.
+2. In Render, select **New → Blueprint** and choose the repository, or create a **Web Service** with runtime **Docker**.
+3. Use `/api/health` as the health-check path. Render supplies `PORT`; the server binds to it automatically.
+4. Add `GEMINI_API_KEY` as a Render secret only if you want optional Gemini review, then set `AI_PROVIDER=gemini`. Otherwise leave `AI_PROVIDER=none` for deterministic AST-first operation.
+5. For GitHub pull-request creation, add a least-privilege `GH_TOKEN` secret that can push the automation branch and create pull requests for the configured repository. Do not put tokens in the Dockerfile or source code.
+
+The Blueprint attaches a one-GB disk at `/app/storage` for indexes, learning data, uploads, and recording sessions. Generated test/page-object files are intentionally not a durable deployment datastore: approval should create a GitHub pull request and the merge is the durable source of truth. Render’s regular container filesystem is replaced on deploy.
+
+The **URL recording / Playwright Codegen Inspector** flow remains a local-desktop capability. It opens native browser and Inspector windows on the API machine, which a normal Render web service cannot display. On Render, use **Upload or paste a script**, then analyze, preview, test the reviewed proposal, and approve it. Playwright test execution itself works in the Docker container.
+
 ## Web Console
 
 The React UI is the main control surface for the platform. It runs at `http://localhost:5173` during local development and connects to the API at `http://localhost:4000` unless `VITE_API_URL` is set.
