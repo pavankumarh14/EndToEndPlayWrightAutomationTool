@@ -17,6 +17,12 @@ The repository is designed around one core rule: Git is the source of truth. Gen
 - Records approved feedback and outcomes under `storage/learning` to adapt future recommendations.
 - Provides a React console and REST API for recording, analysis, approval, execution, failure guidance, learning data, and GitHub pull requests.
 
+## How Codex and GPT-5.6 Were Used
+
+Codex, powered by GPT-5.6, was used as a development collaborator while building this project. It helped inspect the monorepo, design the AST-first workflow, implement the React/Express features, improve the review experience, add Docker/Render deployment support, and verify builds and test flows.
+
+The product itself does **not** require GPT-5.6 at runtime. Its primary analysis and generation path is deterministic and local: it parses Playwright scripts with Abstract Syntax Trees (ASTs), indexes project assets, applies governance rules, and generates proposed files. Optional runtime AI review is provider-configurable (currently Gemini or Ollama), narrowly scoped, and safely falls back to local analysis if unavailable.
+
 ## Repository Layout
 
 ```text
