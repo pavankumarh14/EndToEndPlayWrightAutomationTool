@@ -24,6 +24,11 @@ executionRouter.post('/run', async (req, res, next) => {
             typeof (file as { content?: unknown })?.content === 'string',
         )
       : [];
+    console.info('[execution] Playwright run started', {
+      proposedFileCount: proposedFiles.length,
+      selectedTestFileCount: options.testFiles?.length ?? 0,
+      includeAccessibility: options.runAccessibilityWithFunctional,
+    });
     const result = proposedFiles.length
       ? await service.runProposedFiles(proposedFiles, options)
       : typeof req.body?.source === 'string'
@@ -33,6 +38,10 @@ executionRouter.post('/run', async (req, res, next) => {
           options,
         )
       : await service.runPlaywright(options);
+    console.info('[execution] Playwright run finished', {
+      passed: result.passed,
+      testFiles: result.testFiles,
+    });
     const healing = result.passed
       ? undefined
       : await analyzeFailure(result.logs, result.artifacts.tracesPath);

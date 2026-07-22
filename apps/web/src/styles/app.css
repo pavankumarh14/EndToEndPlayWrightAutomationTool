@@ -241,6 +241,44 @@ h2 {
   background: #fff5f5;
 }
 
+.run-progress {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #9fd8c9;
+  border-radius: 8px;
+  background: #f0fdfa;
+  color: #284452;
+}
+
+.run-progress strong,
+.run-progress p,
+.run-progress small {
+  display: block;
+}
+
+.run-progress p {
+  margin-top: 4px;
+}
+
+.run-progress small {
+  margin-top: 6px;
+  color: #4c5d73;
+  overflow-wrap: anywhere;
+}
+
+.spin {
+  flex: 0 0 auto;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .helper-text {
   color: #617086;
   font-size: 13px;

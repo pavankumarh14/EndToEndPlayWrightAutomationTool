@@ -7,6 +7,7 @@ import {
   FileSearch,
   Gauge,
   GitBranch,
+  LoaderCircle,
   Play,
   ShieldCheck,
   Upload,
@@ -123,6 +124,10 @@ function App() {
     readCurrentAnalysis() ? [proposalPreviewSelection] : [],
   );
   const [busy, setBusy] = useState(false);
+  const [testRun, setTestRun] = useState<
+    { startedAt: number; testFiles: string[]; isProposalPreview: boolean } | undefined
+  >();
+  const [runElapsedSeconds, setRunElapsedSeconds] = useState(0);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<Notice | undefined>({
     tone: 'info',
@@ -175,6 +180,18 @@ function App() {
     }, 60_000);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => {
+    if (!testRun) {
+      setRunElapsedSeconds(0);
+      return;
+    }
+    const updateElapsed = () =>
+      setRunElapsedSeconds(Math.max(0, Math.floor((Date.now() - testRun.startedAt) / 1_000)));
+    updateElapsed();
+    const timer = window.setInterval(updateElapsed, 1_000);
+    return () => window.clearInterval(timer);
+  }, [testRun]);
 
   useEffect(() => {
     window.localStorage.setItem(batchStorageKey, JSON.stringify(stagedProposals));
@@ -686,6 +703,17 @@ function App() {
             (file: string) =>
               runAccessibilityWithFunctional || file.startsWith('tests/functional/'),
           );
+    setExecution(undefined);
+    setTestRun({
+      startedAt: Date.now(),
+      testFiles: plannedFiles,
+      isProposalPreview: runProposalPreview,
+    });
+    console.info('[Playwright Automation Studio] Test run started', {
+      testFiles: plannedFiles,
+      proposalPreview: runProposalPreview,
+      accessibilityIncluded: runAccessibilityWithFunctional,
+    });
     setNotice({
       tone: 'info',
       title: 'Running Playwright',
@@ -697,14 +725,14 @@ function App() {
       visibleOn: ['Run Tests'],
     });
     try {
-      setExecution(
-        await apiPost('/api/execution/run', {
+      const result = await apiPost<any>('/api/execution/run', {
           installMissingDependencies,
           runAccessibilityWithFunctional,
           testFiles: !runProposalPreview && selectedTestFiles.length ? selectedTestFiles : undefined,
           proposedFiles: runProposalPreview ? analysis?.proposedChange.files : undefined,
-        }),
-      );
+        });
+      setExecution(result);
+      console.info('[Playwright Automation Studio] Test run finished', result.result);
       setNotice({
         tone: 'success',
         title: 'Run finished',
@@ -715,9 +743,11 @@ function App() {
       navigate('Run Tests');
     } catch (err) {
       const message = String(err);
+      console.error('[Playwright Automation Studio] Test run failed to start', err);
       setError(message);
       setNotice({ tone: 'error', title: 'Run failed to start', message, visibleOn: ['Run Tests'] });
     } finally {
+      setTestRun(undefined);
       setBusy(false);
     }
   }
@@ -766,8 +796,10 @@ function App() {
             {active === 'Run Tests' && (
               <>
                 <button onClick={runTests} disabled={busy || (!index?.tests.length && !analysis)}>
-                  <Play size={16} />
-                  {selectedTestFiles[0] === proposalPreviewSelection || (!index?.tests.length && analysis)
+                  {testRun ? <LoaderCircle className="spin" size={16} /> : <Play size={16} />}
+                  {testRun
+                    ? `Running tests (${formatElapsed(runElapsedSeconds)})`
+                    : selectedTestFiles[0] === proposalPreviewSelection || (!index?.tests.length && analysis)
                     ? 'Test proposal before approval'
                     : selectedTestFiles.length
                     ? `Run selected (${selectedTestFiles.length})`
@@ -887,6 +919,8 @@ function App() {
               selectedTestFiles={selectedTestFiles}
               setSelectedTestFiles={setSelectedTestFiles}
               hasProposalPreview={Boolean(analysis?.proposedChange.files.length)}
+              testRun={testRun}
+              runElapsedSeconds={runElapsedSeconds}
             />
           )}
           {active === 'AI Insights' && <AiInsights analysis={analysis} />}
@@ -1837,12 +1871,16 @@ function Execution({
   selectedTestFiles,
   setSelectedTestFiles,
   hasProposalPreview,
+  testRun,
+  runElapsedSeconds,
 }: {
   execution: any;
   availableTests: Array<{ name: string; filePath: string; hasAccessibilityCoverage: boolean }>;
   selectedTestFiles: string[];
   setSelectedTestFiles: React.Dispatch<React.SetStateAction<string[]>>;
   hasProposalPreview: boolean;
+  testRun?: { startedAt: number; testFiles: string[]; isProposalPreview: boolean };
+  runElapsedSeconds: number;
 }) {
   const hasTests = availableTests.length > 0;
   const installSummary = execution?.result.installActions?.length
@@ -1853,6 +1891,25 @@ function Execution({
 
   return (
     <div className="stack">
+      {testRun && (
+        <div className="run-progress" role="status" aria-live="polite">
+          <LoaderCircle className="spin" size={20} />
+          <div>
+            <strong>Playwright is running</strong>
+            <p>
+              {testRun.isProposalPreview
+                ? 'Testing the reviewed proposal in temporary files before approval.'
+                : 'Running the selected tests on the current branch.'}{' '}
+              Elapsed: {formatElapsed(runElapsedSeconds)}.
+            </p>
+            <small>
+              {testRun.testFiles.length
+                ? `Running: ${testRun.testFiles.join(', ')}`
+                : 'Discovering matching test files…'}
+            </small>
+          </div>
+        </div>
+      )}
       <div className="panel wide">
         <h2>Choose a test to run</h2>
         <p className="helper-text">
@@ -2381,6 +2438,12 @@ function NoticeBanner({ notice }: { notice: Notice }) {
 
 function shouldShowNotice(notice: Notice, active: string): boolean {
   return !notice.visibleOn || notice.visibleOn.includes(active);
+}
+
+function formatElapsed(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return minutes ? `${minutes}m ${remainingSeconds}s` : `${remainingSeconds}s`;
 }
 
 function pageFromHash(hash = window.location.hash): string {
